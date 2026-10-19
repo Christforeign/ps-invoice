@@ -52,11 +52,11 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
 
   function validate() {
     const e: { [k: string]: string } & { overpaid?: string } = {};
-    if (!customer.name.trim()) e.name = "Customer name is required";
-    if (!customer.phone.trim() && !customer.whatsapp.trim()) e.phone = "Enter a phone or WhatsApp number";
-    if (customer.email && !/^\S+@\S+\.\S+$/.test(customer.email)) e.email = "Invalid email";
-    if (!date) e.date = "Invoice date is required";
-    if (packages.length < 1) e.packages = "At least one package is required";
+    if (!customer.name.trim()) e["name"] = "Customer name is required";
+    if (!customer.phone.trim() && !customer.whatsapp.trim()) e["phone"] = "Enter a phone or WhatsApp number";
+    if (customer.email && !/^\S+@\S+\.\S+$/.test(customer.email)) e["email"] = "Invalid email";
+    if (!date) e["date"] = "Invoice date is required";
+    if (packages.length < 1) e["packages"] = "At least one package is required";
     packages.forEach((p, i) => {
       if (!p.weight || !isValidNumber(p.weight, false) || num(p.weight) <= 0) e[`w${p.id}`] = `Package ${i + 1}: enter a weight above 0`;
       if (!isValidNumber(p.rate, false)) e[`r${p.id}`] = `Package ${i + 1}: invalid rate`;
@@ -67,7 +67,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
     });
     payments.forEach((p, i) => { if (!isValidNumber(p.amount)) e[`p${p.id}`] = `Payment ${i + 1}: invalid amount`; });
     if (totals.paid > totals.total) e.overpaid = `Amount paid (${fmtMoney(totals.paid)}) is more than the invoice total (${fmtMoney(totals.total)})`;
-    if (!isValidNumber(exchangeRate, false)) e.rate = "Invalid exchange rate";
+    if (!isValidNumber(exchangeRate, false)) e["rate"] = "Invalid exchange rate";
     setErrors(e);
     return Object.values(e) as string[];
   }
