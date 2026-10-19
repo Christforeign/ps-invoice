@@ -12,7 +12,7 @@ export async function renderPdf(el: HTMLElement): Promise<Blob> {
   const pw = pdf.internal.pageSize.getWidth();
   const ph = pdf.internal.pageSize.getHeight();
   const pageHpx = Math.floor((canvas.width * ph) / pw);
-  for (let y = 0, page = 0; y < canvas.height; y += pageHpx, page++) {
+  for (let y = 0, page = 0; y < canvas.height - 8; y += pageHpx, page++) {
     const slice = document.createElement("canvas");
     slice.width = canvas.width;
     slice.height = Math.min(pageHpx, canvas.height - y);

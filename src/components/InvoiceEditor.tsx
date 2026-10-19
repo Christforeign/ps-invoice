@@ -238,7 +238,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
             <TRow k="Shipping" v={fmtMoney(totals.shipping)} />
             <TRow k="Customs / duty" v={fmtMoney(totals.customs)} />
             <TRow k="Service fees" v={fmtMoney(totals.service)} />
-            <TRow k="Discounts" v={`-${fmtMoney(totals.discount)}`} />
+            <TRow k="Discounts" v={totals.discount ? `-${fmtMoney(totals.discount)}` : fmtMoney(0)} />
             <TRow k="Subtotal" v={fmtMoney(totals.subtotal)} />
             <div className="flex items-center justify-between gap-2 py-1">
               <label className="flex items-center gap-2"><Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} /> Tax</label>
