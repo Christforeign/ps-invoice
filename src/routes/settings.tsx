@@ -210,13 +210,13 @@ function DesignTab() {
         <details>
           <summary className="cursor-pointer font-semibold">Visible fields</summary>
           <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-            {Object.entries(SHOW_FIELDS).map(([k, l]) => <label key={k} className="flex items-center gap-2 text-sm"><Switch checked={!!d.show[k]} onCheckedChange={(v) => setD({ ...d, show: { ...d.show, [k]: v } })} /> {l}</label>)}
+            {(Object.entries(SHOW_FIELDS) as [keyof typeof SHOW_FIELDS, string][]).map(([k, l]) => <label key={k} className="flex items-center gap-2 text-sm"><Switch checked={!!d.show[k]} onCheckedChange={(v) => setD({ ...d, show: { ...d.show, [k]: v } })} /> {l}</label>)}
           </div>
         </details>
         <details>
           <summary className="cursor-pointer font-semibold">Header, table & label texts</summary>
           <div className="mt-2 grid gap-2">
-            {Object.keys(DEFAULT_LABELS).map((k) => <div key={k}><Label className="text-xs">{k}</Label><Input value={d.labels[k] ?? ""} onChange={(e) => setD({ ...d, labels: { ...d.labels, [k]: e.target.value } })} /></div>)}
+            {(Object.keys(DEFAULT_LABELS) as (keyof typeof DEFAULT_LABELS)[]).map((k) => <div key={k}><Label className="text-xs">{k}</Label><Input value={d.labels[k] ?? ""} onChange={(e) => setD({ ...d, labels: { ...d.labels, [k]: e.target.value } })} /></div>)}
           </div>
         </details>
         <div className="flex flex-wrap gap-2">

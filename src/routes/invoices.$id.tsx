@@ -15,7 +15,7 @@ import { fmtMoney, isValidNumber, toCents } from "@/lib/calc";
 import { downloadBlob, messageVars, pdfFilename, renderPdf, whatsappUrl } from "@/lib/share";
 
 export const Route = createFileRoute("/invoices/$id")({
-  validateSearch: (s: Record<string, unknown>): { pdf?: number } => (s.pdf ? { pdf: Number(s.pdf) } : {}),
+  validateSearch: (s: Record<string, unknown>): { pdf?: number } => (s["pdf"] ? { pdf: Number(s["pdf"]) } : {}),
   head: () => ({
     meta: [
       { title: "Invoice · Prime Shipping" },

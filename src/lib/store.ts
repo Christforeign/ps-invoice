@@ -48,8 +48,8 @@ export interface Design {
   logoPosition: "left" | "right" | "center";
   tableBorders: boolean;
   headerBg: string;
-  labels: Record<string, string>;
-  show: Record<string, boolean>;
+  labels: Labels;
+  show: Record<ShowKey, boolean>;
 }
 
 export interface Messaging {
@@ -119,7 +119,7 @@ export interface DB {
   activity: Activity[];
 }
 
-export const DEFAULT_LABELS: Record<string, string> = {
+export const DEFAULT_LABELS = {
   title: "FACTURE",
   billTo: "FACTURÉ À",
   shipDetails: "DÉTAILS D'EXPÉDITION",
@@ -154,8 +154,9 @@ export const DEFAULT_LABELS: Record<string, string> = {
   UNPAID: "Non payée",
   CANCELLED: "Annulée",
 };
+export type Labels = Record<keyof typeof DEFAULT_LABELS, string>;
 
-export const SHOW_FIELDS: Record<string, string> = {
+export const SHOW_FIELDS = {
   logo: "Logo",
   businessAddress: "Business address",
   businessContact: "Business phone / WhatsApp",
@@ -178,6 +179,7 @@ export const SHOW_FIELDS: Record<string, string> = {
   paymentInstructions: "Payment instructions",
   footer: "Footer",
 };
+export type ShowKey = keyof typeof SHOW_FIELDS;
 
 export function defaultDesign(id = "default", name = "Prime Classic"): Design {
   return {
@@ -194,7 +196,7 @@ export function defaultDesign(id = "default", name = "Prime Classic"): Design {
     tableBorders: true,
     headerBg: "#EEF2F4",
     labels: { ...DEFAULT_LABELS },
-    show: Object.fromEntries(Object.keys(SHOW_FIELDS).map((k) => [k, !["colDesc", "colQty", "colService", "taxId", "packageNotes"].includes(k)])),
+    show: Object.fromEntries(Object.keys(SHOW_FIELDS).map((k) => [k, !["colDesc", "colQty", "colService", "taxId", "packageNotes"].includes(k)])) as Record<ShowKey, boolean>,
   };
 }
 
@@ -329,7 +331,7 @@ export function deleteDesign(id: string) {
   commit({
     ...db,
     designs,
-    settings: { ...db.settings, activeDesignId: db.settings.activeDesignId === id ? designs[0].id : db.settings.activeDesignId },
+    settings: { ...db.settings, activeDesignId: db.settings.activeDesignId === id ? designs[0]!.id : db.settings.activeDesignId },
     activity: log(db, "Template deleted", id),
   });
 }

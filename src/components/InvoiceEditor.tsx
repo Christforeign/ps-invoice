@@ -32,7 +32,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
   const [taxEnabled, setTaxEnabled] = useState(existing?.taxEnabled ?? s.currency.taxEnabled);
   const [taxRate, setTaxRate] = useState(existing?.taxRate ?? s.currency.taxRate);
   const [custSearch, setCustSearch] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
 
   const totals = useMemo(() => calcTotals(packages, payments, num(taxRate), taxEnabled), [packages, payments, taxRate, taxEnabled]);
   const number = existing?.number ?? peekNextNumber();
@@ -51,7 +51,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
   const setPay = (id: string, patch: Partial<Payment>) => setPayments((ps) => ps.map((p) => (p.id === id ? { ...p, ...patch } : p)));
 
   function validate() {
-    const e: Record<string, string> = {};
+    const e: { [k: string]: string } & { overpaid?: string } = {};
     if (!customer.name.trim()) e.name = "Customer name is required";
     if (!customer.phone.trim() && !customer.whatsapp.trim()) e.phone = "Enter a phone or WhatsApp number";
     if (customer.email && !/^\S+@\S+\.\S+$/.test(customer.email)) e.email = "Invalid email";
@@ -69,7 +69,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
     if (totals.paid > totals.total) e.overpaid = `Amount paid (${fmtMoney(totals.paid)}) is more than the invoice total (${fmtMoney(totals.total)})`;
     if (!isValidNumber(exchangeRate, false)) e.rate = "Invalid exchange rate";
     setErrors(e);
-    return Object.values(e);
+    return Object.values(e) as string[];
   }
 
   function submit() {

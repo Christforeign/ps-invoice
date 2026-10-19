@@ -12,7 +12,7 @@ export function toCents(v: string | number | undefined | null): number {
   const [i = "0", f = ""] = s.replace("-", "").split(".");
   const frac = (f + "000").slice(0, 3);
   let cents = parseInt(i || "0", 10) * 100 + parseInt(frac.slice(0, 2), 10);
-  if (parseInt(frac[2], 10) >= 5) cents += 1;
+  if (parseInt(frac[2] ?? "0", 10) >= 5) cents += 1;
   return neg ? -cents : cents;
 }
 

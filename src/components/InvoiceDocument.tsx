@@ -27,15 +27,15 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
 
   const cols: { key: string; label: string; align?: "right" | "center"; render: (i: number) => string }[] = [
     { key: "pkg", label: L.colPkg, render: (i) => String(i + 1) },
-    { key: "tracking", label: L.colTracking, render: (i) => invoice.packages[i].trackingNumber || "—" },
+    { key: "tracking", label: L.colTracking, render: (i) => invoice.packages[i]!.trackingNumber || "—" },
   ];
-  if (S.colDesc) cols.push({ key: "desc", label: L.colDesc, render: (i) => [invoice.packages[i].itemName, invoice.packages[i].description].filter(Boolean).join(" — ") || "—" });
-  if (S.colQty) cols.push({ key: "qty", label: L.colQty, align: "center", render: (i) => invoice.packages[i].quantity || "1" });
-  if (S.colCustoms) cols.push({ key: "customs", label: L.colCustoms, align: "right", render: (i) => { const c = calcLine(invoice.packages[i]).customs; return c ? fmtMoney(c, "") : "—"; } });
-  if (S.colService) cols.push({ key: "service", label: L.colService, align: "right", render: (i) => { const c = calcLine(invoice.packages[i]).service; return c ? fmtMoney(c, "") : "—"; } });
-  cols.push({ key: "weight", label: L.colWeight, align: "right", render: (i) => fmtWeight(calcLine(invoice.packages[i]).milliLb) });
-  cols.push({ key: "ship", label: `${L.colShipping}${rates.length === 1 ? ` · ${rates[0]} ${main}/LB` : ""}`, align: "right", render: (i) => fmtMoney(calcLine(invoice.packages[i]).shipping, main) });
-  if (S.colTotal) cols.push({ key: "total", label: L.colTotal, align: "right", render: (i) => fmtMoney(calcLine(invoice.packages[i]).total, main) });
+  if (S.colDesc) cols.push({ key: "desc", label: L.colDesc, render: (i) => [invoice.packages[i]!.itemName, invoice.packages[i]!.description].filter(Boolean).join(" — ") || "—" });
+  if (S.colQty) cols.push({ key: "qty", label: L.colQty, align: "center", render: (i) => invoice.packages[i]!.quantity || "1" });
+  if (S.colCustoms) cols.push({ key: "customs", label: L.colCustoms, align: "right", render: (i) => { const c = calcLine(invoice.packages[i]!).customs; return c ? fmtMoney(c, "") : "—"; } });
+  if (S.colService) cols.push({ key: "service", label: L.colService, align: "right", render: (i) => { const c = calcLine(invoice.packages[i]!).service; return c ? fmtMoney(c, "") : "—"; } });
+  cols.push({ key: "weight", label: L.colWeight, align: "right", render: (i) => fmtWeight(calcLine(invoice.packages[i]!).milliLb) });
+  cols.push({ key: "ship", label: `${L.colShipping}${rates.length === 1 ? ` · ${rates[0]} ${main}/LB` : ""}`, align: "right", render: (i) => fmtMoney(calcLine(invoice.packages[i]!).shipping, main) });
+  if (S.colTotal) cols.push({ key: "total", label: L.colTotal, align: "right", render: (i) => fmtMoney(calcLine(invoice.packages[i]!).total, main) });
 
   const totalsRow: Record<string, string> = {
     pkg: L.totals,
