@@ -40,6 +40,7 @@ function SettingsPage() {
             <TabsTrigger value="payments">Payment methods</TabsTrigger>
             <TabsTrigger value="design">Invoice design</TabsTrigger>
             <TabsTrigger value="messaging">Email & WhatsApp</TabsTrigger>
+            <TabsTrigger value="security">Admin / Sécurité</TabsTrigger>
             <TabsTrigger value="backup">Backup</TabsTrigger>
           </TabsList>
           <TabsContent value="business"><BusinessTab /></TabsContent>
@@ -48,6 +49,7 @@ function SettingsPage() {
           <TabsContent value="payments"><PaymentMethodsTab /></TabsContent>
           <TabsContent value="design"><DesignTab /></TabsContent>
           <TabsContent value="messaging"><MessagingTab /></TabsContent>
+          <TabsContent value="security"><SecurityTab /></TabsContent>
           <TabsContent value="backup"><BackupTab /></TabsContent>
         </Tabs>
       ) : <p className="text-muted-foreground">Loading…</p>}
@@ -244,6 +246,82 @@ function MessagingTab() {
         <div><Label>WhatsApp message</Label><Textarea rows={4} value={m.whatsappTemplate} onChange={(e) => setM({ ...m, whatsappTemplate: e.target.value })} /></div>
       </div>
       <Button className="mt-4" onClick={() => { updateSettings({ messaging: m }, "Email/WhatsApp settings changed"); toast.success("Messages saved"); }}>Save</Button>
+    </Card>
+  );
+}
+
+function SecurityTab() {
+  const db = useDB();
+  const [email, setEmail] = useState(db.settings.security?.adminEmail || "blaisechristeveste@gmail.com");
+  const [password, setPassword] = useState(db.settings.security?.adminPassword || "#Christ21");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleSave = () => {
+    if (!email.trim()) {
+      toast.error("L'adresse email ne peut pas être vide.");
+      return;
+    }
+    if (!password) {
+      toast.error("Le mot de passe ne peut pas être vide.");
+      return;
+    }
+    updateSettings(
+      {
+        security: {
+          adminEmail: email.trim(),
+          adminPassword: password,
+        },
+      },
+      "Identifiants de connexion modifiés",
+    );
+    toast.success("Identifiants administrateur mis à jour avec succès !");
+  };
+
+  return (
+    <Card>
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-base font-semibold">Identifiants d'accès & Connexion</h3>
+          <p className="text-sm text-muted-foreground">
+            Modifiez l'email et le mot de passe requis pour vous connecter à l'application.
+          </p>
+        </div>
+
+        <div className="grid gap-3 max-w-md">
+          <div>
+            <Label htmlFor="admin-email">Email de connexion</Label>
+            <Input
+              id="admin-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="admin-password">Mot de passe</Label>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-xs text-primary hover:underline cursor-pointer"
+              >
+                {showPassword ? "Masquer" : "Afficher"}
+              </button>
+            </div>
+            <Input
+              id="admin-password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <Button className="mt-2" onClick={handleSave}>
+          Sauvegarder les identifiants
+        </Button>
+      </div>
     </Card>
   );
 }

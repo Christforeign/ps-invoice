@@ -1,0 +1,8 @@
+{
+  "name": "Prime Shipping Invoice System",
+  "description": "Create, save, print and share Prime Shipping invoices.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

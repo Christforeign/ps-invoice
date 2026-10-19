@@ -1,9 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
-import { FileText, History, LayoutDashboard, Plus, Search, Settings, Users, Activity as ActivityIcon } from "lucide-react";
+import { FileText, History, LayoutDashboard, Plus, Search, Settings, Users, Activity as ActivityIcon, LogOut, User } from "lucide-react";
 import { useDB, searchInvoices, invoiceTotals } from "@/lib/store";
 import { fmtMoney } from "@/lib/calc";
 import { StatusBadge } from "./StatusBadge";
+import { useAuth, logoutUser } from "@/lib/auth";
+import { LoginForm } from "./LoginForm";
+import { useHydrated } from "./InvoicePreview";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -67,6 +70,13 @@ function GlobalSearch() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const db = useDB();
+  const auth = useAuth();
+  const hydrated = useHydrated();
+
+  if (hydrated && !auth.isLoggedIn) {
+    return <LoginForm />;
+  }
+
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0 md:pl-60">
       <aside className="fixed inset-y-0 left-0 hidden w-60 flex-col bg-sidebar text-sidebar-foreground md:flex">
@@ -86,6 +96,22 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
+        <div className="border-t border-sidebar-border p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs font-medium text-sidebar-foreground/90">{auth.email || db.settings.business.email || "Utilisateur"}</div>
+              <div className="text-[10px] text-sidebar-foreground/50">Session active</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => logoutUser()}
+              title="Déconnexion"
+              className="rounded p-1.5 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground cursor-pointer"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </aside>
       <header className="sticky top-0 z-40 flex items-center gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur">
         <Link to="/" className="flex shrink-0 items-center gap-2 md:hidden">
@@ -93,6 +119,23 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="font-display font-bold">PRIME</span>
         </Link>
         <GlobalSearch />
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
+          {auth.email && (
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground border rounded-full px-2.5 py-1 bg-card">
+              <User className="h-3.5 w-3.5 text-primary" />
+              <span className="max-w-[140px] truncate">{auth.email}</span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => logoutUser()}
+            title="Déconnexion"
+            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Déconnexion</span>
+          </button>
+        </div>
       </header>
       <main className="mx-auto max-w-7xl p-4 md:p-6">{children}</main>
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-card md:hidden">

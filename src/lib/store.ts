@@ -58,6 +58,11 @@ export interface Messaging {
   whatsappTemplate: string;
 }
 
+export interface SecuritySettings {
+  adminEmail: string;
+  adminPassword: string;
+}
+
 export interface Settings {
   business: Business;
   numbering: Numbering;
@@ -65,6 +70,7 @@ export interface Settings {
   paymentMethods: string[];
   messaging: Messaging;
   activeDesignId: string;
+  security: SecuritySettings;
 }
 
 export interface Customer {
@@ -228,6 +234,10 @@ export function defaultDB(): DB {
         whatsappTemplate: "Hello {name}, here is your Prime Shipping invoice {number}. Total: {total}. Paid: {paid}. Balance: {balance}. Thank you.",
       },
       activeDesignId: "default",
+      security: {
+        adminEmail: "blaisechristeveste@gmail.com",
+        adminPassword: "#Christ21",
+      },
     },
     designs: [defaultDesign()],
     customers: [],
@@ -249,7 +259,18 @@ function load(): DB {
     const base = defaultDB();
     if (raw) {
       const p = JSON.parse(raw) as DB;
-      state = { ...base, ...p, settings: { ...base.settings, ...p.settings } };
+      state = {
+        ...base,
+        ...p,
+        settings: {
+          ...base.settings,
+          ...p.settings,
+          security: {
+            ...base.settings.security,
+            ...(p.settings?.security || {}),
+          },
+        },
+      };
     } else state = base;
   } catch {
     state = defaultDB();

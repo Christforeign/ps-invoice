@@ -7,7 +7,45 @@ export function pdfFilename(inv: Invoice) {
 
 export async function renderPdf(el: HTMLElement): Promise<Blob> {
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas-pro"), import("jspdf")]);
-  const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: 794 });
+
+  // Wait for images (logos, imported data URLs, remote URLs) to load and decode before capture
+  const images = Array.from(el.querySelectorAll("img"));
+  await Promise.all(
+    images.map(async (img) => {
+      if (!img.src) return;
+      // Imported logos are data URLs; avoid crossOrigin restriction on data URIs
+      if (img.src.startsWith("data:") && img.hasAttribute("crossorigin")) {
+        img.removeAttribute("crossorigin");
+      }
+      if (!img.complete || img.naturalWidth === 0) {
+        await new Promise<void>((resolve) => {
+          const onDone = () => {
+            img.removeEventListener("load", onDone);
+            img.removeEventListener("error", onDone);
+            resolve();
+          };
+          img.addEventListener("load", onDone);
+          img.addEventListener("error", onDone);
+          setTimeout(onDone, 2500);
+        });
+      }
+      if ("decode" in img) {
+        try {
+          await img.decode();
+        } catch {
+          // Ignore decode failure if unsupported
+        }
+      }
+    })
+  );
+
+  const canvas = await html2canvas(el, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: "#ffffff",
+    windowWidth: 794,
+    imageTimeout: 15000,
+  });
   const pdf = new jsPDF({ unit: "pt", format: "a4", compress: true });
   const pw = pdf.internal.pageSize.getWidth();
   const ph = pdf.internal.pageSize.getHeight();
