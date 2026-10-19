@@ -7,10 +7,11 @@ interface Props {
   business: Business;
   currency: CurrencySettings;
   design: Design;
+  printable?: boolean;
 }
 
 /* Colors here come from the admin-configured invoice design, so they are applied inline. */
-export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function InvoiceDocument({ invoice, business, currency, design }, ref) {
+export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function InvoiceDocument({ invoice, business, currency, design, printable }, ref) {
   const L = design.labels;
   const S = design.show;
   const t = calcTotals(invoice.packages, invoice.payments, Number(invoice.taxRate) || 0, invoice.taxEnabled, invoice.cancelled);
@@ -48,7 +49,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
   const logo = S.logo && business.logo ? <img src={business.logo} alt="logo" crossOrigin="anonymous" style={{ width: design.logoSize, maxHeight: design.logoSize, objectFit: "contain" }} /> : null;
 
   return (
-    <div ref={ref} className="print-area" style={{ width: 794, minHeight: 1123, background: "#ffffff", color: design.text, fontFamily: `${design.font}, Arial, sans-serif`, fontSize: fs, padding: "28px 32px", boxSizing: "border-box", position: "relative", display: "flex", flexDirection: "column" }}>
+    <div ref={ref} className={printable ? "print-area" : undefined} style={{ width: 794, minHeight: 1123, background: "#ffffff", color: design.text, fontFamily: `${design.font}, Arial, sans-serif`, fontSize: fs, padding: "28px 32px", boxSizing: "border-box", position: "relative", display: "flex", flexDirection: "column" }}>
       {invoice.cancelled && (
         <div style={{ position: "absolute", top: 420, left: 0, right: 0, textAlign: "center", fontSize: 110, fontWeight: 800, color: "rgba(185,28,28,0.12)", transform: "rotate(-20deg)", pointerEvents: "none" }}>{L.CANCELLED.toUpperCase()}</div>
       )}
