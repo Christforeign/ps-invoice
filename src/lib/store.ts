@@ -58,11 +58,6 @@ export interface Messaging {
   whatsappTemplate: string;
 }
 
-export interface SecuritySettings {
-  adminEmail: string;
-  adminPassword: string;
-}
-
 export interface Settings {
   business: Business;
   numbering: Numbering;
@@ -70,7 +65,17 @@ export interface Settings {
   paymentMethods: string[];
   messaging: Messaging;
   activeDesignId: string;
-  security: SecuritySettings;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  price: string;
+  stock: number;
+  lowStock: number;
+  notes: string;
+  createdAt: string;
 }
 
 export interface Customer {
@@ -123,6 +128,7 @@ export interface DB {
   customers: Customer[];
   invoices: Invoice[];
   activity: Activity[];
+  products: Product[];
 }
 
 export const DEFAULT_LABELS = {
@@ -234,15 +240,12 @@ export function defaultDB(): DB {
         whatsappTemplate: "Hello {name}, here is your Prime Shipping invoice {number}. Total: {total}. Paid: {paid}. Balance: {balance}. Thank you.",
       },
       activeDesignId: "default",
-      security: {
-        adminEmail: "blaisechristeveste@gmail.com",
-        adminPassword: "#Christ21",
-      },
     },
     designs: [defaultDesign()],
     customers: [],
     invoices: [],
     activity: [],
+    products: [],
   };
 }
 
@@ -258,19 +261,7 @@ function load(): DB {
     const raw = localStorage.getItem(KEY);
     const base = defaultDB();
     if (raw) {
-      const p = JSON.parse(raw) as DB;
-      state = {
-        ...base,
-        ...p,
-        settings: {
-          ...base.settings,
-          ...p.settings,
-          security: {
-            ...base.settings.security,
-            ...(p.settings?.security || {}),
-          },
-        },
-      };
+      state = normalize(JSON.parse(raw) as DB);
     } else state = base;
   } catch {
     state = defaultDB();
@@ -278,15 +269,45 @@ function load(): DB {
   return state!;
 }
 
-function commit(next: DB) {
-  state = next;
+export function normalize(p: Partial<DB>): DB {
+  const base = defaultDB();
+  const settings = { ...base.settings, ...(p.settings || {}) } as Settings & { security?: unknown };
+  delete settings.security;
+  return { ...base, ...p, settings, products: p.products ?? [] } as DB;
+}
+
+type SyncFn = (db: DB) => void;
+let syncFn: SyncFn | null = null;
+/** Cloud sync hook: called after every local change. */
+export function setSyncHandler(fn: SyncFn | null) {
+  syncFn = fn;
+}
+
+function persistLocal(next: DB) {
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
-  } catch (e) {
-    alert("Storage is full. Try a smaller logo image.");
-    throw e;
+  } catch {
+    // local cache full; cloud copy remains the source of truth
   }
+}
+
+function commit(next: DB) {
+  state = next;
+  persistLocal(next);
   listeners.forEach((l) => l());
+  syncFn?.(next);
+}
+
+/** Replace the whole DB with data loaded from the cloud (no re-upload). */
+export function replaceDB(next: DB) {
+  state = normalize(next);
+  persistLocal(state);
+  listeners.forEach((l) => l());
+}
+
+/** True when this device has invoices/customers/products worth keeping. */
+export function hasLocalData(db: DB) {
+  return db.invoices.length > 0 || db.customers.length > 0 || db.products.length > 0;
 }
 
 export function getDB() {
@@ -451,7 +472,7 @@ export function importBackup(json: string) {
   const p = JSON.parse(json) as DB;
   if (!p.settings || !Array.isArray(p.invoices)) throw new Error("Invalid backup file");
   const db = load();
-  commit({ ...p, activity: log(db, "Backup restored", "Settings") });
+  commit({ ...normalize(p), activity: log(db, "Backup restored", "Settings") });
 }
 
 export function emptyCustomer(): Omit<Customer, "id" | "createdAt"> {
@@ -475,4 +496,37 @@ export function searchInvoices(db: DB, q: string): Invoice[] {
       .toLowerCase()
       .includes(s),
   );
+}
+
+
+// ---------- inventory ----------
+export function upsertProduct(pr: Product): Product {
+  const db = load();
+  const exists = db.products.some((x) => x.id === pr.id);
+  commit({
+    ...db,
+    products: exists ? db.products.map((x) => (x.id === pr.id ? pr : x)) : [pr, ...db.products],
+    activity: log(db, exists ? "Product updated" : "Product created", pr.name),
+  });
+  return pr;
+}
+
+/** Change stock by delta (e.g. -1 for a sale). Stock never goes below 0. */
+export function adjustStock(id: string, delta: number, reason = "") {
+  const db = load();
+  const pr = db.products.find((x) => x.id === id);
+  if (!pr || !Number.isInteger(delta) || delta === 0) return;
+  const stock = Math.max(0, pr.stock + delta);
+  commit({
+    ...db,
+    products: db.products.map((x) => (x.id === id ? { ...x, stock } : x)),
+    activity: log(db, `Stock ${delta > 0 ? "+" : ""}${delta}${reason ? ` (${reason})` : ""}`, pr.name),
+  });
+}
+
+export function deleteProduct(id: string) {
+  const db = load();
+  const pr = db.products.find((x) => x.id === id);
+  if (!pr) return;
+  commit({ ...db, products: db.products.filter((x) => x.id !== id), activity: log(db, "Product deleted", pr.name) });
 }

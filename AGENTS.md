@@ -10,8 +10,8 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
-- No auth by design (single-business app); never add login/accounts.
-- Data persists in browser localStorage via `src/lib/store.ts` (single DB object, all mutations go through its action functions so activity is logged); a JSON backup/restore lives in Settings. Why: no backend was chosen; move to Lovable Cloud if multi-device sync is needed.
+- Accounts use Lovable Cloud email/password; AppShell gates the whole app on the session (no route-level gate). Why: user wants data tied to their account.
+- All app data is one DB object in `src/lib/store.ts` (mutations via its action functions so activity is logged), cached in localStorage and synced per user as JSON to the `app_data` table by `src/lib/cloud.ts`; on sign-in cloud and device data are merged by id so no invoice is lost. Why: multi-device access with minimal rewrite.
 - All money math uses integer cents and weight uses integer milli-pounds in `src/lib/calc.ts`; never sum floats. Rules are covered by `src/test/calc.test.ts`.
 - Invoice numbers are allocated only in `createInvoice` (skips any number already used) and are never edited after creation.
 - `InvoiceDocument` is the single invoice layout for preview, print and PDF (html2canvas-pro + jsPDF); it renders only the package lines that exist.

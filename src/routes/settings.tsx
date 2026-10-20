@@ -40,7 +40,6 @@ function SettingsPage() {
             <TabsTrigger value="payments">Payment methods</TabsTrigger>
             <TabsTrigger value="design">Invoice design</TabsTrigger>
             <TabsTrigger value="messaging">Email & WhatsApp</TabsTrigger>
-            <TabsTrigger value="security">Admin / Sécurité</TabsTrigger>
             <TabsTrigger value="backup">Backup</TabsTrigger>
           </TabsList>
           <TabsContent value="business"><BusinessTab /></TabsContent>
@@ -49,7 +48,6 @@ function SettingsPage() {
           <TabsContent value="payments"><PaymentMethodsTab /></TabsContent>
           <TabsContent value="design"><DesignTab /></TabsContent>
           <TabsContent value="messaging"><MessagingTab /></TabsContent>
-          <TabsContent value="security"><SecurityTab /></TabsContent>
           <TabsContent value="backup"><BackupTab /></TabsContent>
         </Tabs>
       ) : <p className="text-muted-foreground">Loading…</p>}
@@ -250,86 +248,10 @@ function MessagingTab() {
   );
 }
 
-function SecurityTab() {
-  const db = useDB();
-  const [email, setEmail] = useState(db.settings.security?.adminEmail || "blaisechristeveste@gmail.com");
-  const [password, setPassword] = useState(db.settings.security?.adminPassword || "#Christ21");
-  const [showPassword, setShowPassword] = useState(false);
-
-  const handleSave = () => {
-    if (!email.trim()) {
-      toast.error("L'adresse email ne peut pas être vide.");
-      return;
-    }
-    if (!password) {
-      toast.error("Le mot de passe ne peut pas être vide.");
-      return;
-    }
-    updateSettings(
-      {
-        security: {
-          adminEmail: email.trim(),
-          adminPassword: password,
-        },
-      },
-      "Identifiants de connexion modifiés",
-    );
-    toast.success("Identifiants administrateur mis à jour avec succès !");
-  };
-
-  return (
-    <Card>
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-base font-semibold">Identifiants d'accès & Connexion</h3>
-          <p className="text-sm text-muted-foreground">
-            Modifiez l'email et le mot de passe requis pour vous connecter à l'application.
-          </p>
-        </div>
-
-        <div className="grid gap-3 max-w-md">
-          <div>
-            <Label htmlFor="admin-email">Email de connexion</Label>
-            <Input
-              id="admin-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="admin-password">Mot de passe</Label>
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="text-xs text-primary hover:underline cursor-pointer"
-              >
-                {showPassword ? "Masquer" : "Afficher"}
-              </button>
-            </div>
-            <Input
-              id="admin-password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <Button className="mt-2" onClick={handleSave}>
-          Sauvegarder les identifiants
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
 function BackupTab() {
   return (
     <Card>
-      <p className="mb-3 text-sm text-muted-foreground">Your invoices are saved on this device's browser. Download a backup regularly, and restore it to move data to another phone or computer.</p>
+      <p className="mb-3 text-sm text-muted-foreground">Vos données sont sauvegardées automatiquement en ligne avec votre compte. Vous pouvez aussi télécharger une copie de sécurité.</p>
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => downloadBlob(new Blob([exportBackup()], { type: "application/json" }), `prime-shipping-backup-${new Date().toISOString().slice(0, 10)}.json`)}>Download backup</Button>
         <Label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted">
