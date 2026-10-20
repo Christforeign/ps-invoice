@@ -1,10 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
-import { FileText, History, LayoutDashboard, Plus, Search, Settings, Users, Activity as ActivityIcon, LogOut, User } from "lucide-react";
+import { FileText, History, LayoutDashboard, Plus, Search, Settings, Users, Activity as ActivityIcon, LogOut, User, Package } from "lucide-react";
 import { useDB, searchInvoices, invoiceTotals } from "@/lib/store";
 import { fmtMoney } from "@/lib/calc";
 import { StatusBadge } from "./StatusBadge";
-import { useAuth, logoutUser } from "@/lib/auth";
+import { useCloudSession, signOut } from "@/lib/cloud";
 import { LoginForm } from "./LoginForm";
 import { useHydrated } from "./InvoicePreview";
 
@@ -13,6 +13,7 @@ const NAV = [
   { to: "/invoices/new", label: "New Invoice", icon: Plus },
   { to: "/invoices", label: "History", icon: History },
   { to: "/customers", label: "Customers", icon: Users },
+  { to: "/inventory", label: "Inventaire", icon: Package },
   { to: "/activity", label: "Activity", icon: ActivityIcon },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
@@ -70,11 +71,17 @@ function GlobalSearch() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const db = useDB();
-  const auth = useAuth();
+  const { session, status } = useCloudSession();
   const hydrated = useHydrated();
+  const auth = { email: session?.user.email ?? "" };
+  const logoutUser = () => void signOut();
 
-  if (hydrated && !auth.isLoggedIn) {
-    return <LoginForm />;
+  if (!hydrated || status === "loading" || status === "syncing") {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Chargement de vos données…</div>;
+  }
+  if (status === "signed_out") return <LoginForm />;
+  if (status === "error") {
+    return <div className="flex min-h-screen flex-col items-center justify-center gap-3 text-sm text-muted-foreground"><p>Impossible de charger vos données en ligne.</p><button className="text-primary underline" onClick={() => location.reload()}>Réessayer</button></div>;
   }
 
   return (
@@ -99,8 +106,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="border-t border-sidebar-border p-3">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <div className="truncate text-xs font-medium text-sidebar-foreground/90">{auth.email || db.settings.business.email || "Utilisateur"}</div>
-              <div className="text-[10px] text-sidebar-foreground/50">Session active</div>
+              <div className="truncate text-xs font-medium text-sidebar-foreground/90">{auth.email || "Utilisateur"}</div>
+              <div className="text-[10px] text-sidebar-foreground/50">Sauvegardé en ligne</div>
             </div>
             <button
               type="button"
@@ -139,7 +146,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
       <main className="mx-auto max-w-7xl p-4 md:p-6">{children}</main>
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-card md:hidden">
-        {NAV.filter((n) => n.to !== "/activity").map((n) => (
+        {NAV.filter((n) => n.to !== "/activity" && n.to !== "/customers").map((n) => (
           <Link key={n.to} to={n.to} activeOptions={{ exact: true }} className="flex flex-col items-center gap-0.5 py-2 text-[11px] text-muted-foreground" activeProps={{ className: "!text-primary font-semibold" }}>
             <n.icon className="h-5 w-5" /> {n.label.replace("New Invoice", "New")}
           </Link>
