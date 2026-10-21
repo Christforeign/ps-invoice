@@ -51,7 +51,7 @@ function ProductForm({ initial, onDone }: { initial: Product; onDone: () => void
             Choisir une image
             <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) { try { setP({ ...p, image: await fileToSmallImage(f) }); } catch { toast.error("Image invalide"); } } }} />
           </Label>
-          {p.image && <Button type="button" size="sm" variant="ghost" onClick={() => setP({ ...p, image: undefined })}>Retirer l'image</Button>}
+          {p.image && <Button type="button" size="sm" variant="ghost" onClick={() => setP({ ...p, image: "" })}>Retirer l'image</Button>}
         </div>
       </div>
       <div><Label>Nom du produit *</Label><Input value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} /></div>
