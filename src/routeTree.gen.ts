@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as InventoryRouteImport } from './routes/inventory'
+import { Route as PosRouteImport } from './routes/pos'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as CustomersIndexRouteImport } from './routes/customers.index'
 import { Route as CustomersIdRouteImport } from './routes/customers.$id'
@@ -33,6 +34,11 @@ const ActivityRoute = ActivityRouteImport.update({
 const InventoryRoute = InventoryRouteImport.update({
   id: '/inventory',
   path: '/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PosRoute = PosRouteImport.update({
+  id: '/pos',
+  path: '/pos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/inventory': typeof InventoryRoute
+  '/pos': typeof PosRoute
   '/settings': typeof SettingsRoute
   '/customers/$id': typeof CustomersIdRoute
   '/edit/$id': typeof EditIdRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/inventory': typeof InventoryRoute
+  '/pos': typeof PosRoute
   '/settings': typeof SettingsRoute
   '/customers/$id': typeof CustomersIdRoute
   '/edit/$id': typeof EditIdRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/inventory': typeof InventoryRoute
+  '/pos': typeof PosRoute
   '/settings': typeof SettingsRoute
   '/customers/$id': typeof CustomersIdRoute
   '/edit/$id': typeof EditIdRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/inventory'
+    | '/pos'
     | '/settings'
     | '/customers/$id'
     | '/edit/$id'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/inventory'
+    | '/pos'
     | '/settings'
     | '/customers/$id'
     | '/edit/$id'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/inventory'
+    | '/pos'
     | '/settings'
     | '/customers/$id'
     | '/edit/$id'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityRoute: typeof ActivityRoute
   InventoryRoute: typeof InventoryRoute
+  PosRoute: typeof PosRoute
   SettingsRoute: typeof SettingsRoute
   CustomersIdRoute: typeof CustomersIdRoute
   EditIdRoute: typeof EditIdRoute
@@ -181,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/inventory'
       fullPath: '/inventory'
       preLoaderRoute: typeof InventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pos': {
+      id: '/pos'
+      path: '/pos'
+      fullPath: '/pos'
+      preLoaderRoute: typeof PosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -239,6 +259,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
   InventoryRoute: InventoryRoute,
+  PosRoute: PosRoute,
   SettingsRoute: SettingsRoute,
   CustomersIdRoute: CustomersIdRoute,
   EditIdRoute: EditIdRoute,

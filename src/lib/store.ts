@@ -76,6 +76,26 @@ export interface Product {
   lowStock: number;
   notes: string;
   createdAt: string;
+  /** Small compressed data-URL photo shown in inventory and POS. */
+  image?: string;
+}
+
+export interface SaleLine {
+  productId?: string; // empty for items not in inventory
+  name: string;
+  price: string; // unit price USD
+  qty: number;
+}
+
+export interface Sale {
+  id: string;
+  number: string;
+  at: string;
+  lines: SaleLine[];
+  discount: string;
+  method: string;
+  received: string;
+  customerName: string;
 }
 
 export interface Customer {
@@ -129,6 +149,7 @@ export interface DB {
   invoices: Invoice[];
   activity: Activity[];
   products: Product[];
+  sales: Sale[];
 }
 
 export const DEFAULT_LABELS = {
@@ -246,6 +267,7 @@ export function defaultDB(): DB {
     invoices: [],
     activity: [],
     products: [],
+    sales: [],
   };
 }
 
@@ -273,7 +295,7 @@ export function normalize(p: Partial<DB>): DB {
   const base = defaultDB();
   const settings = { ...base.settings, ...(p.settings || {}) } as Settings & { security?: unknown };
   delete settings.security;
-  return { ...base, ...p, settings, products: p.products ?? [] } as DB;
+  return { ...base, ...p, settings, products: p.products ?? [], sales: p.sales ?? [] } as DB;
 }
 
 type SyncFn = (db: DB) => void;
@@ -529,4 +551,24 @@ export function deleteProduct(id: string) {
   const pr = db.products.find((x) => x.id === id);
   if (!pr) return;
   commit({ ...db, products: db.products.filter((x) => x.id !== id), activity: log(db, "Product deleted", pr.name) });
+}
+
+export function saleTotalCents(sale: Pick<Sale, "lines" | "discount">): number {
+  const sub = sale.lines.reduce((a, l) => a + Math.round(Number(l.price || 0) * 100) * l.qty, 0);
+  return Math.max(0, sub - Math.round(Number(sale.discount || 0) * 100));
+}
+
+/** Records a POS sale and removes sold inventory quantities (never below 0). */
+export function recordSale(input: Omit<Sale, "id" | "number" | "at">): Sale {
+  const db = load();
+  const sale: Sale = { ...input, id: uid(), number: `TK${String(db.sales.length + 1).padStart(5, "0")}`, at: new Date().toISOString() };
+  const sold = new Map<string, number>();
+  for (const l of sale.lines) if (l.productId) sold.set(l.productId, (sold.get(l.productId) ?? 0) + l.qty);
+  commit({
+    ...db,
+    sales: [sale, ...db.sales],
+    products: db.products.map((x) => (sold.has(x.id) ? { ...x, stock: Math.max(0, x.stock - sold.get(x.id)!) } : x)),
+    activity: log(db, `Vente POS ${sale.number}`, `$${(saleTotalCents(sale) / 100).toFixed(2)}`),
+  });
+  return sale;
 }

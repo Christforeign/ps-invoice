@@ -58,8 +58,9 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
     if (!date) e["date"] = "Invoice date is required";
     if (packages.length < 1) e["packages"] = "At least one package is required";
     packages.forEach((p, i) => {
-      if (!p.weight || !isValidNumber(p.weight, false) || num(p.weight) <= 0) e[`w${p.id}`] = `Package ${i + 1}: enter a weight above 0`;
-      if (!isValidNumber(p.rate, false)) e[`r${p.id}`] = `Package ${i + 1}: invalid rate`;
+      if (p.kind === "item") { if (!isValidNumber(p.unitPrice, false)) e[`u${p.id}`] = `Ligne ${i + 1}: prix invalide`; }
+      else if (!p.weight || !isValidNumber(p.weight, false) || num(p.weight) <= 0) e[`w${p.id}`] = `Package ${i + 1}: enter a weight above 0`;
+      if (p.kind !== "item" && !isValidNumber(p.rate, false)) e[`r${p.id}`] = `Package ${i + 1}: invalid rate`;
       if (!isValidNumber(p.quantity, false) || !/^\d+$/.test(p.quantity) || Number(p.quantity) < 1) e[`q${p.id}`] = `Package ${i + 1}: quantity must be a whole number ≥ 1`;
       (["customs", "serviceFee", "discount"] as const).forEach((k) => { if (!isValidNumber(p[k])) e[`${k}${p.id}`] = `Package ${i + 1}: invalid ${k}`; });
       const c = calcLine(p);
@@ -160,7 +161,11 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
               return (
                 <div key={p.id} className="rounded-md border border-l-4 border-l-primary bg-background p-3">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="font-display text-lg font-bold">Package {i + 1}</span>
+                    <span className="flex items-center gap-2 font-display text-lg font-bold">{i + 1}.
+                      <select aria-label="Type de ligne" value={p.kind ?? "package"} onChange={(e) => setPkg(p.id, { kind: e.target.value as "package" | "item" })} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm font-normal">
+                        <option value="package">Colis (poids)</option>
+                        <option value="item">Article / Service</option>
+                      </select></span>
                     <div className="flex gap-1">
                       <Button type="button" variant="ghost" size="icon" title="Duplicate line" disabled={packages.length >= MAX} onClick={() => setPackages((ps) => [...ps.slice(0, i + 1), { ...p, id: uid(), trackingNumber: "" }, ...ps.slice(i + 1)])}><Copy className="h-4 w-4" /></Button>
                       <Button type="button" variant="ghost" size="icon" title="Remove" disabled={packages.length <= 1} onClick={() => setPackages((ps) => ps.filter((x) => x.id !== p.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -171,6 +176,9 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
                     <div className="col-span-2"><Label className="text-xs">Item / product</Label><Input value={p.itemName} onChange={(e) => setPkg(p.id, { itemName: e.target.value })} maxLength={100} /></div>
                     <div className="col-span-2"><Label className="text-xs">Description</Label><Input value={p.description} onChange={(e) => setPkg(p.id, { description: e.target.value })} maxLength={200} /></div>
                     <div><Label className="text-xs">Qty</Label><Input inputMode="numeric" value={p.quantity} onChange={(e) => setPkg(p.id, { quantity: e.target.value.replace(/\D/g, "") })} className={errors[`q${p.id}`] ? "border-destructive" : ""} /></div>
+{p.kind === "item" ? (
+                      <div className="col-span-2"><Label className="text-xs">Prix unitaire ({s.currency.main}) *</Label>{numInput(p.unitPrice ?? "", (v) => setPkg(p.id, { unitPrice: v }), `u${p.id}`, "0.00")}</div>
+                    ) : (<>
                     <div><Label className="text-xs">Weight *</Label>{numInput(p.weight, (v) => setPkg(p.id, { weight: v }), `w${p.id}`, "0.00")}</div>
                     <div>
                       <Label className="text-xs">Unit</Label>
@@ -179,6 +187,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
                       </select>
                     </div>
                     <div><Label className="text-xs">Rate ({s.currency.main}/lb)</Label>{numInput(p.rate, (v) => setPkg(p.id, { rate: v }), `r${p.id}`)}</div>
+                    </>)}
                     <div><Label className="text-xs">Customs / duty</Label>{numInput(p.customs, (v) => setPkg(p.id, { customs: v }), `customs${p.id}`)}</div>
                     <div><Label className="text-xs">Service fee</Label>{numInput(p.serviceFee, (v) => setPkg(p.id, { serviceFee: v }), `serviceFee${p.id}`)}</div>
                     <div><Label className="text-xs">Discount</Label>{numInput(p.discount, (v) => setPkg(p.id, { discount: v }), `discount${p.id}`)}</div>
@@ -186,7 +195,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
                   </div>
                   {Object.entries(errors).filter(([k]) => k.endsWith(p.id)).map(([k, v]) => <p key={k} className="mt-1 text-xs text-destructive">{v}</p>)}
                   <div className="mt-2 flex flex-wrap justify-between gap-x-4 gap-y-1 rounded bg-muted px-3 py-2 text-sm">
-                    <span>{p.weightUnit !== "lb" && `${fmtWeight(c.milliLb)} · `}Shipping <b>{fmtMoney(c.shipping)}</b></span>
+                    <span>{p.kind === "item" ? <>Montant <b>{fmtMoney(c.shipping)}</b></> : <>{p.weightUnit !== "lb" && `${fmtWeight(c.milliLb)} · `}Shipping <b>{fmtMoney(c.shipping)}</b></>}</span>
                     <span>Line total <b className="text-primary">{fmtMoney(c.total)}</b></span>
                   </div>
                 </div>
@@ -194,7 +203,10 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
             })}
           </div>
           <Button type="button" variant="outline" className="mt-3 w-full border-dashed" disabled={packages.length >= MAX} onClick={() => setPackages((ps) => [...ps, emptyPackage(ps[ps.length - 1]?.rate || s.currency.defaultRate)])}>
-            <Plus className="h-4 w-4" /> {packages.length >= MAX ? "Maximum 20 packages reached" : "Add Package"}
+            <Plus className="h-4 w-4" /> {packages.length >= MAX ? "Maximum 20 lignes" : "Ajouter colis"}
+          </Button>
+          <Button type="button" variant="outline" className="mt-2 w-full border-dashed" disabled={packages.length >= MAX} onClick={() => setPackages((ps) => [...ps, { ...emptyPackage(s.currency.defaultRate), kind: "item", unitPrice: "" }])}>
+            <Plus className="h-4 w-4" /> Ajouter article / service
           </Button>
         </section>
 

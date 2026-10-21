@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageTitle } from "@/components/AppShell";
+import { fileToSmallImage } from "@/lib/receipt";
 import { adjustStock, deleteProduct, uid, upsertProduct, useDB, type Product } from "@/lib/store";
 
 export const Route = createFileRoute("/inventory")({
@@ -43,6 +44,16 @@ function ProductForm({ initial, onDone }: { initial: Product; onDone: () => void
   };
   return (
     <div className="grid gap-3">
+      <div className="flex items-center gap-3">
+        {p.image ? <img src={p.image} alt={p.name} className="h-20 w-20 rounded-md border object-cover" /> : <div className="flex h-20 w-20 items-center justify-center rounded-md border text-xs text-muted-foreground">Pas d'image</div>}
+        <div className="grid gap-1">
+          <Label className="cursor-pointer rounded-md border px-3 py-2 text-sm hover:bg-muted">
+            Choisir une image
+            <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) { try { setP({ ...p, image: await fileToSmallImage(f) }); } catch { toast.error("Image invalide"); } } }} />
+          </Label>
+          {p.image && <Button type="button" size="sm" variant="ghost" onClick={() => setP({ ...p, image: "" })}>Retirer l'image</Button>}
+        </div>
+      </div>
       <div><Label>Nom du produit *</Label><Input value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} /></div>
       <div className="grid grid-cols-2 gap-3">
         <div><Label>Référence</Label><Input value={p.sku} onChange={(e) => setP({ ...p, sku: e.target.value })} /></div>
@@ -86,6 +97,7 @@ function Inventory() {
             const low = p.stock <= p.lowStock;
             return (
               <div key={p.id} className="rounded-lg border bg-card p-4">
+                {p.image && <img src={p.image} alt={p.name} className="mb-3 aspect-square w-full rounded-md object-cover" />}
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="truncate font-semibold">{p.name}</div>

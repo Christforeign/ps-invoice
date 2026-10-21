@@ -15,3 +15,4 @@
 - All money math uses integer cents and weight uses integer milli-pounds in `src/lib/calc.ts`; never sum floats. Rules are covered by `src/test/calc.test.ts`.
 - Invoice numbers are allocated only in `createInvoice` (skips any number already used) and are never edited after creation.
 - `InvoiceDocument` is the single invoice layout for preview, print and PDF (html2canvas-pro + jsPDF); it renders only the package lines that exist.
+- POS receipts print from a separate frame (`src/lib/receipt.ts`) so the page size matches the chosen printer (thermal 58/80mm or A4) instead of the global A4 print style. Sales are stored in the same DB object and decrement stock in `recordSale`.

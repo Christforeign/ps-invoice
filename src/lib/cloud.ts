@@ -18,6 +18,7 @@ export function mergeDB(cloud: DB, local: DB): DB {
     invoices: unionById(cloud.invoices, local.invoices),
     customers: unionById(cloud.customers, local.customers),
     products: unionById(cloud.products, local.products),
+    sales: unionById(cloud.sales ?? [], local.sales ?? []),
     designs: unionById(cloud.designs, local.designs),
     activity: unionById(cloud.activity, local.activity)
       .sort((a, b) => b.at.localeCompare(a.at))
