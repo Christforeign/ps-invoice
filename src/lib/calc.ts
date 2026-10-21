@@ -56,6 +56,9 @@ export interface PackageLine {
   serviceFee: string;
   discount: string;
   notes: string;
+  /** "package" = weight × rate (default); "item" = quantity × unit price (products, services…). */
+  kind?: "package" | "item";
+  unitPrice?: string;
 }
 
 export interface LineCalc {
@@ -68,6 +71,14 @@ export interface LineCalc {
 }
 
 export function calcLine(p: PackageLine): LineCalc {
+  if (p.kind === "item") {
+    const qty = Math.max(0, parseInt(p.quantity || "1", 10) || 0);
+    const amount = (toCents(p.unitPrice) || 0) * qty;
+    const customs = toCents(p.customs) || 0;
+    const service = toCents(p.serviceFee) || 0;
+    const discount = toCents(p.discount) || 0;
+    return { milliLb: 0, shipping: amount, customs, service, discount, total: amount + customs + service - discount };
+  }
   const shipping = shippingCents(p.weight, p.weightUnit, p.rate);
   const customs = toCents(p.customs) || 0;
   const service = toCents(p.serviceFee) || 0;
