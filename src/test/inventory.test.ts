@@ -23,3 +23,14 @@ describe("cloud merge keeps old invoices", () => {
     expect(mergeDB(cloud, local).invoices.map((i) => i.id)).toEqual(["old1"]);
   });
 });
+
+describe("POS sale", () => {
+  beforeEach(() => replaceDB(defaultDB()));
+  it("removes sold stock and keeps out-of-inventory items", async () => {
+    const { recordSale, saleTotalCents } = await import("@/lib/store");
+    const p = upsertProduct({ id: uid(), name: "Cable", sku: "", price: "5.00", stock: 3, lowStock: 0, notes: "", createdAt: "" });
+    const s = recordSale({ lines: [{ productId: p.id, name: "Cable", price: "5.00", qty: 2 }, { name: "Box", price: "1.50", qty: 1 }], discount: "0.50", method: "Cash", received: "", customerName: "" });
+    expect(getDB().products[0]!.stock).toBe(1);
+    expect(saleTotalCents(s)).toBe(1100);
+  });
+});

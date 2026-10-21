@@ -22,3 +22,12 @@ describe("invoice math", () => {
   it("HTG at 132.50", () => expect(toHtgCents(10000, "132.50")).toBe(1325000));
   it("formats INV-PS0001", () => expect(formatInvoiceNumber("INV-PS", 1, 4)).toBe("INV-PS0001"));
 });
+
+import { calcLine as cl } from "@/lib/calc";
+describe("item lines", () => {
+  it("article line = qty × unit price, no weight", () => {
+    const c = cl({ id: "x", kind: "item", unitPrice: "12.50", quantity: "3", trackingNumber: "", description: "", itemName: "", weight: "", weightUnit: "lb", rate: "5.80", customs: "", serviceFee: "", discount: "", notes: "" });
+    expect(c.total).toBe(3750);
+    expect(c.milliLb).toBe(0);
+  });
+});

@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
-import { FileText, History, LayoutDashboard, Plus, Search, Settings, Users, Activity as ActivityIcon, LogOut, User, Package } from "lucide-react";
+import { FileText, History, LayoutDashboard, Plus, Search, Settings, Users, Activity as ActivityIcon, LogOut, User, Package, ShoppingCart } from "lucide-react";
 import { useDB, searchInvoices, invoiceTotals } from "@/lib/store";
 import { fmtMoney } from "@/lib/calc";
 import { StatusBadge } from "./StatusBadge";
@@ -13,6 +13,7 @@ const NAV = [
   { to: "/invoices/new", label: "New Invoice", icon: Plus },
   { to: "/invoices", label: "History", icon: History },
   { to: "/customers", label: "Customers", icon: Users },
+  { to: "/pos", label: "Caisse POS", icon: ShoppingCart },
   { to: "/inventory", label: "Inventaire", icon: Package },
   { to: "/activity", label: "Activity", icon: ActivityIcon },
   { to: "/settings", label: "Settings", icon: Settings },
