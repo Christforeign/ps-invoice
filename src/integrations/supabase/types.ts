@@ -32,12 +32,146 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          event_key: string
+          id: string
+          owner_id: string
+          path: string
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          event_key: string
+          id?: string
+          owner_id: string
+          path?: string
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          event_key?: string
+          id?: string
+          owner_id?: string
+          path?: string
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_devices: {
+        Row: {
+          created_at: string
+          id: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      team_invites: {
+        Row: {
+          accepted_at: string | null
+          code: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          owner_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          code?: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          owner_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          code?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          owner_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      accept_admin: { Args: { invite_code: string }; Returns: string }
+      ensure_team: { Args: never; Returns: string }
+      invite_admin: { Args: { invite_email: string }; Returns: string }
+      merge_records: {
+        Args: { base_rows: Json; current_rows: Json; incoming_rows: Json }
+        Returns: Json
+      }
+      notify_team: {
+        Args: {
+          actor?: string
+          heading: string
+          key: string
+          link: string
+          message: string
+          target: string
+        }
+        Returns: undefined
+      }
+      remove_admin: { Args: { member_id: string }; Returns: undefined }
+      save_team_data: {
+        Args: { baseline: Json; incoming: Json; target: string }
+        Returns: Json
+      }
+      team_access: { Args: { target: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
