@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import logoAsset from "@/assets/prime-logo.jpg.asset.json";
-import { calcTotals, formatInvoiceNumber, type PackageLine, type Payment, type Totals } from "./calc";
+import { calcTotals, formatInvoiceNumber, toCents, type PackageLine, type Payment, type Totals } from "./calc";
 
 export interface Business {
   logo: string;
@@ -150,7 +150,19 @@ export interface DB {
   activity: Activity[];
   products: Product[];
   sales: Sale[];
+  parcels: Parcel[];
+  closures: DailyClosure[];
 }
+
+export const PARCEL_STATUSES = ["Reçu à Miami", "En transit", "Arrivé en Haïti", "Prêt au retrait", "Livré"] as const;
+export interface Parcel {
+  id: string; tracking: string; sender: string; recipient: string; phone: string;
+  origin: string; destination: string; carrier: string; description: string;
+  weight: string; rate: string; status: typeof PARCEL_STATUSES[number];
+  receivedAt: string; updatedAt: string; invoiceId?: string;
+  history: { at: string; status: string }[];
+}
+export interface DailyClosure { id: string; date: string; total: number; methods: Record<string, number>; at: string }
 
 export const DEFAULT_LABELS = {
   title: "FACTURE",
@@ -268,6 +280,8 @@ export function defaultDB(): DB {
     activity: [],
     products: [],
     sales: [],
+    parcels: [],
+    closures: [],
   };
 }
 
@@ -288,14 +302,14 @@ function load(): DB {
   } catch {
     state = defaultDB();
   }
-  return state!;
+  return state ?? SERVER_DB;
 }
 
 export function normalize(p: Partial<DB>): DB {
   const base = defaultDB();
   const settings = { ...base.settings, ...(p.settings || {}) } as Settings & { security?: unknown };
   delete settings.security;
-  return { ...base, ...p, settings, products: p.products ?? [], sales: p.sales ?? [] } as DB;
+  return { ...base, ...p, settings, products: p.products ?? [], sales: p.sales ?? [], parcels: p.parcels ?? [], closures: p.closures ?? [] } as DB;
 }
 
 type SyncFn = (db: DB) => void;
@@ -329,7 +343,7 @@ export function replaceDB(next: DB) {
 
 /** True when this device has invoices/customers/products worth keeping. */
 export function hasLocalData(db: DB) {
-  return db.invoices.length > 0 || db.customers.length > 0 || db.products.length > 0;
+  return db.invoices.length > 0 || db.customers.length > 0 || db.products.length > 0 || db.sales.length > 0 || db.parcels.length > 0;
 }
 
 export function getDB() {
@@ -554,8 +568,8 @@ export function deleteProduct(id: string) {
 }
 
 export function saleTotalCents(sale: Pick<Sale, "lines" | "discount">): number {
-  const sub = sale.lines.reduce((a, l) => a + Math.round(Number(l.price || 0) * 100) * l.qty, 0);
-  return Math.max(0, sub - Math.round(Number(sale.discount || 0) * 100));
+  const sub = sale.lines.reduce((a, l) => a + (toCents(l.price) || 0) * l.qty, 0);
+  return Math.max(0, sub - (toCents(sale.discount) || 0));
 }
 
 /** Records a POS sale and removes sold inventory quantities (never below 0). */
@@ -563,12 +577,42 @@ export function recordSale(input: Omit<Sale, "id" | "number" | "at">): Sale {
   const db = load();
   const sale: Sale = { ...input, id: uid(), number: `TK${String(db.sales.length + 1).padStart(5, "0")}`, at: new Date().toISOString() };
   const sold = new Map<string, number>();
-  for (const l of sale.lines) if (l.productId) sold.set(l.productId, (sold.get(l.productId) ?? 0) + l.qty);
+  for (const l of sale.lines) {
+    if (!Number.isInteger(l.qty) || l.qty < 1 || !Number.isFinite(toCents(l.price)) || toCents(l.price) < 0) throw new Error("Vente invalide");
+    if (l.productId) sold.set(l.productId, (sold.get(l.productId) ?? 0) + l.qty);
+  }
+  for (const [id, qty] of sold) { const p = db.products.find((x) => x.id === id); if (!p || p.stock < qty) throw new Error("Stock insuffisant ; actualisez le panier"); }
   commit({
     ...db,
     sales: [sale, ...db.sales],
-    products: db.products.map((x) => (sold.has(x.id) ? { ...x, stock: Math.max(0, x.stock - sold.get(x.id)!) } : x)),
+    products: db.products.map((x) => ({ ...x, stock: x.stock - (sold.get(x.id) ?? 0) })),
     activity: log(db, `Vente POS ${sale.number}`, `$${(saleTotalCents(sale) / 100).toFixed(2)}`),
   });
   return sale;
+}
+
+export function saveParcel(p: Parcel) {
+  const db = load();
+  if (!p.tracking.trim() || !p.recipient.trim() || !p.sender.trim() || !p.origin.trim() || !p.destination.trim()) throw new Error("Tracking, expéditeur, destinataire et trajet requis");
+  if (db.parcels.some((x) => x.id !== p.id && x.tracking.toLowerCase() === p.tracking.toLowerCase())) throw new Error("Ce tracking existe déjà");
+  const previous = db.parcels.find((x) => x.id === p.id);
+  const at = new Date().toISOString();
+  const next = { ...p, updatedAt: at, history: previous?.status === p.status ? previous.history : [...(previous?.history ?? []), { at, status: p.status }] };
+  commit({ ...db, parcels: previous ? db.parcels.map((x) => x.id === p.id ? next : x) : [next, ...db.parcels], activity: log(db, previous ? `Colis : ${p.status}` : "Colis reçu", p.tracking) });
+}
+
+export function invoiceParcel(id: string): Invoice {
+  const db = load(); const p = db.parcels.find((x) => x.id === id);
+  if (!p) throw new Error("Colis introuvable");
+  const linked = db.invoices.find((i) => i.id === p.invoiceId); if (linked) return linked;
+  if (!(Number(p.weight) > 0) || !(Number(p.rate) >= 0) || !p.phone.trim()) throw new Error("Téléphone, poids positif et tarif requis pour facturer");
+  const inv = createInvoice({ date: new Date().toISOString().slice(0,10), dueDate: "", customerId: "", customer: { ...emptyCustomer(), name: p.recipient, phone: p.phone, address: p.destination }, packages: [{ ...emptyPackage(p.rate), weight: p.weight, trackingNumber: p.tracking, description: p.description, shipment: { sender: p.sender, recipient: p.recipient, origin: p.origin, destination: p.destination, status: p.status, carrier: p.carrier } }], payments: [], notes: db.settings.business.defaultNotes, paymentInfo: db.settings.business.paymentTerms, designId: db.settings.activeDesignId, exchangeRate: db.settings.currency.rate, taxEnabled: db.settings.currency.taxEnabled, taxRate: db.settings.currency.taxRate });
+  saveParcel({ ...p, invoiceId: inv.id }); return inv;
+}
+
+export function closeDay(date: string) {
+  const db = load(); if (db.closures.some((c) => c.date === date)) throw new Error("Journée déjà clôturée");
+  const methods: Record<string,number> = {}; let total=0;
+  for (const s of db.sales.filter((s) => s.at.slice(0,10)===date)) { const n=saleTotalCents(s); total+=n; methods[s.method]=(methods[s.method]??0)+n; }
+  commit({ ...db, closures: [{ id: uid(), date, total, methods, at: new Date().toISOString() }, ...db.closures], activity: log(db,"Clôture journalière",date) });
 }

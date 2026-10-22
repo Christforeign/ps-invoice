@@ -93,6 +93,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
       </div>
 
       {/* Packages: only actual rows */}
+      {invoice.packages.filter((p) => p.shipment).map((p) => <div key={`shipment-${p.id}`} className="mb-3 border-b pb-2 text-sm"><b>{p.trackingNumber}</b> · {p.shipment?.status}<br />De : {p.shipment?.sender} ({p.shipment?.origin}) → Pour : {p.shipment?.recipient} ({p.shipment?.destination}){p.shipment?.carrier && <span> · {p.shipment.carrier}</span>}</div>)}
       <div style={{ fontWeight: 700, fontSize: fs * 1.35, marginBottom: 8 }}>{L.packagesTitle}</div>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>

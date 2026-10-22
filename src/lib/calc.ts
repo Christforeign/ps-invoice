@@ -59,6 +59,7 @@ export interface PackageLine {
   /** "package" = weight × rate (default); "item" = quantity × unit price (products, services…). */
   kind?: "package" | "item";
   unitPrice?: string;
+  shipment?: { sender: string; recipient: string; origin: string; destination: string; status: string; carrier: string };
 }
 
 export interface LineCalc {
