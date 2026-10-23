@@ -18,7 +18,9 @@ export function mergeDB(cloud: DB, local: DB): DB {
     invoices: unionById(cloud.invoices, local.invoices),
     customers: unionById(cloud.customers, local.customers),
     products: unionById(cloud.products, local.products),
-    sales: unionById(cloud.sales ?? [], local.sales ?? []),
+    sales: unionById(cloud.sales ?? [], local.sales ?? []).sort((a, b) => b.at.localeCompare(a.at)),
+    parcels: unionById(cloud.parcels ?? [], local.parcels ?? []),
+    closures: unionById(cloud.closures ?? [], local.closures ?? []),
     designs: unionById(cloud.designs, local.designs),
     activity: unionById(cloud.activity, local.activity)
       .sort((a, b) => b.at.localeCompare(a.at))
@@ -31,12 +33,26 @@ export function mergeDB(cloud: DB, local: DB): DB {
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 let pending: DB | null = null;
+let lastSeen = "";
+let poller: ReturnType<typeof setInterval> | null = null;
 
 async function upload(userId: string, db: DB) {
+  const at = new Date().toISOString();
   const { error } = await supabase
     .from("app_data")
-    .upsert({ user_id: userId, data: db as unknown as Json, updated_at: new Date().toISOString() });
+    .upsert({ user_id: userId, data: db as unknown as Json, updated_at: at });
   if (error) console.error("Cloud save failed", error);
+  else lastSeen = at;
+}
+
+/** Pulls changes made on other devices so they appear (and notify) here without reloading. */
+async function pull(userId: string) {
+  if (pending || document.visibilityState === "hidden" && !("Notification" in window)) return;
+  const { data } = await supabase.from("app_data").select("data, updated_at").eq("user_id", userId).maybeSingle();
+  if (!data || pending || !data.updated_at || data.updated_at <= lastSeen) return;
+  lastSeen = data.updated_at;
+  const cloudData = data.data as unknown as Partial<DB>;
+  if (cloudData && Array.isArray(cloudData.invoices)) replaceDB(mergeDB(normalize(cloudData), getDB()));
 }
 
 async function startSync(userId: string) {
@@ -52,6 +68,8 @@ async function startSync(userId: string) {
   }
   replaceDB(next);
   await upload(userId, getDB());
+  if (poller) clearInterval(poller);
+  poller = setInterval(() => void pull(userId).catch(() => {}), 20000);
   setSyncHandler((db) => {
     pending = db;
     if (timer) clearTimeout(timer);
@@ -73,6 +91,8 @@ export function useCloudSession() {
       if (!s) {
         syncedFor = null;
         setSyncHandler(null);
+        if (poller) clearInterval(poller);
+        poller = null;
         setStatus("signed_out");
         return;
       }
@@ -102,5 +122,7 @@ export async function signOut() {
     pending = null;
   }
   setSyncHandler(null);
+  if (poller) clearInterval(poller);
+  poller = null;
   await supabase.auth.signOut();
 }

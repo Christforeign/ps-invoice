@@ -164,3 +164,16 @@ export function fmtWeight(milliLb: number): string {
 export function formatInvoiceNumber(prefix: string, n: number, pad: number): string {
   return `${prefix}${String(n).padStart(pad, "0")}`;
 }
+
+/** Code shown for amounts in a document. Old documents (no mode) use the main currency. */
+export function docCode(mode: "BOTH" | "USD" | "HTG" | undefined, main = "USD"): string {
+  return mode === "HTG" ? "HTG" : mode === "USD" ? "USD" : main || "USD";
+}
+
+/** Converts a price between USD and HTG using the exchange rate, in integer cents. */
+export function convertCents(cents: number, from: "USD" | "HTG", to: "USD" | "HTG", rate: string | number): number {
+  if (from === to) return cents;
+  const rateC = toCents(rate) || 0;
+  if (from === "USD") return Math.round((cents * rateC) / 100);
+  return rateC > 0 ? Math.round((cents * 100) / rateC) : 0;
+}

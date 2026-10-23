@@ -1,12 +1,14 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
-import { FileText, History, LayoutDashboard, Plus, Search, Settings, Users, Activity as ActivityIcon, LogOut, User, Package, ShoppingCart } from "lucide-react";
+import { FileText, History, LayoutDashboard, Plus, Search, Settings, Users, Activity as ActivityIcon, LogOut, User, Package, ShoppingCart, Receipt, Bell, BellOff } from "lucide-react";
 import { useDB, searchInvoices, invoiceTotals } from "@/lib/store";
 import { fmtMoney } from "@/lib/calc";
 import { StatusBadge } from "./StatusBadge";
 import { useCloudSession, signOut } from "@/lib/cloud";
 import { LoginForm } from "./LoginForm";
 import { useHydrated } from "./InvoicePreview";
+import { toast } from "sonner";
+import { enableNotifications, disableNotifications, useActivityNotifications, useNotifyState } from "@/lib/notify";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -14,6 +16,7 @@ const NAV = [
   { to: "/invoices", label: "History", icon: History },
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/pos", label: "Caisse POS", icon: ShoppingCart },
+  { to: "/sales", label: "Ventes POS", icon: Receipt },
   { to: "/inventory", label: "Inventaire", icon: Package },
   { to: "/parcels", label: "Colis", icon: FileText },
   { to: "/activity", label: "Activity", icon: ActivityIcon },
@@ -77,6 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const hydrated = useHydrated();
   const auth = { email: session?.user.email ?? "" };
   const logoutUser = () => void signOut();
+  useActivityNotifications(db.activity, status === "ready");
 
   if (!hydrated || status === "loading" || status === "syncing") {
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Chargement de vos données…</div>;
@@ -129,6 +133,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
         <GlobalSearch />
         <div className="flex items-center gap-2 shrink-0 ml-auto">
+          <NotifyButton />
           {auth.email && (
             <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground border rounded-full px-2.5 py-1 bg-card">
               <User className="h-3.5 w-3.5 text-primary" />
@@ -148,13 +153,32 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
       <main className="mx-auto max-w-7xl p-4 md:p-6">{children}</main>
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-card md:hidden">
-        {NAV.filter((n) => n.to !== "/activity" && n.to !== "/customers").map((n) => (
+        {NAV.filter((n) => !["/activity", "/customers", "/sales", "/parcels", "/inventory"].includes(n.to)).map((n) => (
           <Link key={n.to} to={n.to} activeOptions={{ exact: true }} className="flex flex-col items-center gap-0.5 py-2 text-[11px] text-muted-foreground" activeProps={{ className: "!text-primary font-semibold" }}>
             <n.icon className="h-5 w-5" /> {n.label.replace("New Invoice", "New")}
           </Link>
         ))}
       </nav>
     </div>
+  );
+}
+
+function NotifyButton() {
+  const [state, setState] = useNotifyState();
+  const on = state === "on";
+  const click = async () => {
+    if (on) { disableNotifications(); setState("off"); return toast("Notifications désactivées sur cet appareil"); }
+    const r = await enableNotifications();
+    setState(r);
+    if (r === "iframe") toast.error("Ouvrez le site dans son propre onglet (ps-invoice.lovable.app) pour activer les notifications.");
+    else if (r === "denied") toast.error("Notifications bloquées : autorisez-les dans les réglages du navigateur pour ce site.");
+    else if (r === "unsupported") toast.error("Ce navigateur ne gère pas les notifications. Sur iPhone : Partager → Sur l'écran d'accueil, puis ouvrez l'app.");
+  };
+  return (
+    <button type="button" onClick={click} title={on ? "Désactiver les notifications" : "Activer les notifications"} className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-accent cursor-pointer ${on ? "text-primary" : "text-muted-foreground"}`}>
+      {on ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+      <span className="hidden sm:inline">{on ? "Alertes ON" : "Alertes"}</span>
+    </button>
   );
 }
 

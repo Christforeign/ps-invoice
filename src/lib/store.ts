@@ -25,7 +25,11 @@ export interface Numbering {
   pad: number;
 }
 
+/** BOTH = old method (USD + HTG equivalent); USD or HTG = amounts entered and shown only in that currency. */
+export type CurrencyMode = "BOTH" | "USD" | "HTG";
+
 export interface CurrencySettings {
+  mode?: CurrencyMode;
   main: string;
   secondary: string;
   rate: string;
@@ -78,6 +82,8 @@ export interface Product {
   createdAt: string;
   /** Small compressed data-URL photo shown in inventory and POS. */
   image?: string;
+  /** Currency the price is written in (old products = USD). */
+  currency?: "USD" | "HTG";
 }
 
 export interface SaleLine {
@@ -96,6 +102,8 @@ export interface Sale {
   method: string;
   received: string;
   customerName: string;
+  /** Currency of all amounts in this sale (old sales = USD). */
+  currency?: "USD" | "HTG";
 }
 
 export interface Customer {
@@ -133,6 +141,8 @@ export interface Invoice {
   exchangeRate: string;
   taxEnabled: boolean;
   taxRate: string;
+  /** Old invoices have none and keep the USD + HTG display. */
+  currencyMode?: CurrencyMode;
 }
 
 export interface Activity {
@@ -319,12 +329,21 @@ export function setSyncHandler(fn: SyncFn | null) {
   syncFn = fn;
 }
 
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+/** Writing the whole DB (with photos) is slow, so it runs after the click has been painted. */
 function persistLocal(next: DB) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(next));
-  } catch {
-    // local cache full; cloud copy remains the source of truth
-  }
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    try {
+      localStorage.setItem(KEY, JSON.stringify(next));
+    } catch {
+      // local cache full; cloud copy remains the source of truth
+    }
+  }, 250);
+}
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => { if (persistTimer && state) { clearTimeout(persistTimer); persistTimer = null; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* full */ } } });
 }
 
 function commit(next: DB) {
@@ -586,7 +605,7 @@ export function recordSale(input: Omit<Sale, "id" | "number" | "at">): Sale {
     ...db,
     sales: [sale, ...db.sales],
     products: db.products.map((x) => ({ ...x, stock: x.stock - (sold.get(x.id) ?? 0) })),
-    activity: log(db, `Vente POS ${sale.number}`, `$${(saleTotalCents(sale) / 100).toFixed(2)}`),
+    activity: log(db, `Vente POS ${sale.number}`, `${(saleTotalCents(sale) / 100).toFixed(2)} ${sale.currency ?? "USD"}`),
   });
   return sale;
 }
