@@ -15,6 +15,7 @@ const NAV = [
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/pos", label: "Caisse POS", icon: ShoppingCart },
   { to: "/inventory", label: "Inventaire", icon: Package },
+  { to: "/parcels", label: "Colis", icon: FileText },
   { to: "/activity", label: "Activity", icon: ActivityIcon },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
