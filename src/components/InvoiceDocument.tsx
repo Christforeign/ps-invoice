@@ -35,7 +35,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
   if (S.colCustoms) cols.push({ key: "customs", label: L.colCustoms, align: "right", render: (i) => { const c = calcLine(invoice.packages[i]!).customs; return c ? fmtMoney(c, "") : "—"; } });
   if (S.colService) cols.push({ key: "service", label: L.colService, align: "right", render: (i) => { const c = calcLine(invoice.packages[i]!).service; return c ? fmtMoney(c, "") : "—"; } });
   cols.push({ key: "weight", label: L.colWeight, align: "right", render: (i) => invoice.packages[i]!.kind === "item" ? "—" : fmtWeight(calcLine(invoice.packages[i]!).milliLb) });
-  cols.push({ key: "ship", label: `${L.colShipping}${rates.length === 1 ? ` · ${rates[0]} ${main}/LB` : ""}`, align: "right", render: (i) => fmtMoney(calcLine(invoice.packages[i]!).shipping, code) });
+  cols.push({ key: "ship", label: `${L.colShipping}${rates.length === 1 ? ` · ${rates[0]} ${code}/LB` : ""}`, align: "right", render: (i) => fmtMoney(calcLine(invoice.packages[i]!).shipping, code) });
   if (S.colTotal) cols.push({ key: "total", label: L.colTotal, align: "right", render: (i) => fmtMoney(calcLine(invoice.packages[i]!).total, code) });
 
   const totalsRow: Record<string, string> = {
@@ -89,7 +89,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
         <div style={{ textAlign: "right", lineHeight: 1.7 }}>
           <div style={{ color: "#888", fontWeight: 600 }}>{L.shipDetails}</div>
           <div style={{ fontWeight: 700, fontSize: fs * 1.2, color: "#444" }}>{invoice.packages.length} colis • {fmtWeight(t.milliLb)}</div>
-          <div style={{ color: "#888" }}>{rates.length ? `${rates.join(" / ")} ${main}/lb` : ""} · Facturation {code}</div>
+          <div style={{ color: "#888" }}>{rates.length ? `${rates.join(" / ")} ${code}/lb` : ""} · Facturation {code}</div>
         </div>
       </div>
 
