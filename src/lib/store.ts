@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import logoAsset from "@/assets/prime-logo.jpg.asset.json";
-import { calcTotals, formatInvoiceNumber, toCents, type PackageLine, type Payment, type Totals } from "./calc";
+import { calcTotals, convertCents, docCode, formatInvoiceNumber, toCents, type PackageLine, type Payment, type Totals } from "./calc";
 
 export interface Business {
   logo: string;
@@ -388,6 +388,16 @@ function log(db: DB, action: string, ref: string): Activity[] {
 
 export function invoiceTotals(inv: Invoice): Totals {
   return calcTotals(inv.packages, inv.payments, Number(inv.taxRate) || 0, inv.taxEnabled, inv.cancelled);
+}
+
+/** Display currency code for an invoice (old invoices keep the main currency). */
+export function invoiceCode(inv: Pick<Invoice, "currencyMode">, main = "USD"): string {
+  return docCode(inv.currencyMode, main);
+}
+
+/** Convert an invoice amount (cents) into the main currency for cross-invoice stats. */
+export function toMainCents(cents: number, inv: Pick<Invoice, "currencyMode" | "exchangeRate">, main = "USD"): number {
+  return inv.currencyMode === "HTG" ? convertCents(cents, "HTG", "USD", inv.exchangeRate) : cents;
 }
 
 export function designFor(db: DB, id?: string): Design {
