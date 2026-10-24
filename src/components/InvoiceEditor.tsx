@@ -257,27 +257,27 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
           <dl className="space-y-1.5 text-sm">
             <TRow k="Packages" v={String(packages.length)} />
             <TRow k="Total weight" v={fmtWeight(totals.milliLb)} />
-            <TRow k="Shipping" v={fmtMoney(totals.shipping)} />
-            <TRow k="Customs / duty" v={fmtMoney(totals.customs)} />
-            <TRow k="Service fees" v={fmtMoney(totals.service)} />
-            <TRow k="Discounts" v={totals.discount ? `-${fmtMoney(totals.discount)}` : fmtMoney(0)} />
-            <TRow k="Subtotal" v={fmtMoney(totals.subtotal)} />
+            <TRow k="Shipping" v={fmtMoney(totals.shipping, code)} />
+            <TRow k="Customs / duty" v={fmtMoney(totals.customs, code)} />
+            <TRow k="Service fees" v={fmtMoney(totals.service, code)} />
+            <TRow k="Discounts" v={totals.discount ? `-${fmtMoney(totals.discount, code)}` : fmtMoney(0, code)} />
+            <TRow k="Subtotal" v={fmtMoney(totals.subtotal, code)} />
             <div className="flex items-center justify-between gap-2 py-1">
               <label className="flex items-center gap-2"><Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} /> Tax</label>
               {taxEnabled && <Input value={taxRate} onChange={(e) => setTaxRate(e.target.value)} className="h-8 w-20 text-right" inputMode="decimal" />}
               {taxEnabled && <span>%</span>}
             </div>
-            {taxEnabled && <TRow k="Tax" v={fmtMoney(totals.tax)} />}
+            {taxEnabled && <TRow k="Tax" v={fmtMoney(totals.tax, code)} />}
             <div className="my-2 border-t" />
-            <div className="flex justify-between font-display text-2xl font-bold"><span>Total</span><span>{fmtMoney(totals.total, s.currency.main)}</span></div>
-            {s.currency.showSecondary && (
+            <div className="flex justify-between font-display text-2xl font-bold"><span>Total</span><span>{fmtMoney(totals.total, code)}</span></div>
+            {currencyMode === "BOTH" && s.currency.showSecondary && (
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="flex items-center gap-1">@ <Input value={exchangeRate} onChange={(e) => setExchangeRate(e.target.value)} className="h-7 w-20 text-right" inputMode="decimal" /></span>
                 <span>{fmtMoney(toHtgCents(totals.total, exchangeRate), s.currency.secondary)}</span>
               </div>
             )}
-            <TRow k="Paid" v={fmtMoney(totals.paid)} />
-            <div className="flex justify-between rounded-md bg-primary px-3 py-2 font-bold text-primary-foreground"><span>Balance</span><span>{fmtMoney(totals.balance, s.currency.main)}</span></div>
+            <TRow k="Paid" v={fmtMoney(totals.paid, code)} />
+            <div className="flex justify-between rounded-md bg-primary px-3 py-2 font-bold text-primary-foreground"><span>Balance</span><span>{fmtMoney(totals.balance, code)}</span></div>
           </dl>
           <Button size="lg" className="mt-4 h-12 w-full text-base" onClick={submit}>{existing ? "Save changes" : "Generate Invoice"}</Button>
         </div>
