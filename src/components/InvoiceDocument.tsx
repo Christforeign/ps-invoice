@@ -43,8 +43,8 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
     customs: t.customs ? fmtMoney(t.customs, "") : "—",
     service: t.service ? fmtMoney(t.service, "") : "—",
     weight: fmtWeight(t.milliLb),
-    ship: fmtMoney(t.shipping, main),
-    total: fmtMoney(t.subtotal, main),
+    ship: fmtMoney(t.shipping, code),
+    total: fmtMoney(t.subtotal, code),
   };
 
   const logo = S.logo && business.logo ? <img src={business.logo} alt="logo" crossOrigin="anonymous" style={{ width: design.logoSize, maxHeight: design.logoSize, objectFit: "contain" }} /> : null;
@@ -89,7 +89,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
         <div style={{ textAlign: "right", lineHeight: 1.7 }}>
           <div style={{ color: "#888", fontWeight: 600 }}>{L.shipDetails}</div>
           <div style={{ fontWeight: 700, fontSize: fs * 1.2, color: "#444" }}>{invoice.packages.length} colis • {fmtWeight(t.milliLb)}</div>
-          <div style={{ color: "#888" }}>{rates.length ? `${rates.join(" / ")} ${main}/lb` : ""} · Facturation {main}</div>
+          <div style={{ color: "#888" }}>{rates.length ? `${rates.join(" / ")} ${main}/lb` : ""} · Facturation {code}</div>
         </div>
       </div>
 
@@ -137,7 +137,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
                 invoice.payments.map((p) => (
                   <div key={p.id} style={{ display: "flex", justifyContent: "space-between", fontSize: fs * 0.92, padding: "3px 0" }}>
                     <span>{p.date} · {p.method}</span>
-                    <b>{fmtMoney(Math.round(Number(p.amount) * 100), main)}</b>
+                    <b>{fmtMoney(Math.round(Number(p.amount) * 100), code)}</b>
                   </div>
                 ))
               )}
@@ -145,17 +145,17 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
           )}
         </div>
         <div style={{ width: 340, lineHeight: 1.6 }}>
-          <Row label={`${L.subtotal}:`} value={fmtMoney(t.shipping + t.customs, main)} muted />
-          <Row label={`${L.serviceFees}:`} value={fmtMoney(t.service, main)} muted />
-          {t.discount > 0 && <Row label={`${L.discount}:`} value={`-${fmtMoney(t.discount, main)}`} muted />}
-          {invoice.taxEnabled && <Row label={`${L.tax} (${invoice.taxRate}%):`} value={fmtMoney(t.tax, main)} muted />}
+          <Row label={`${L.subtotal}:`} value={fmtMoney(t.shipping + t.customs, code)} muted />
+          <Row label={`${L.serviceFees}:`} value={fmtMoney(t.service, code)} muted />
+          {t.discount > 0 && <Row label={`${L.discount}:`} value={`-${fmtMoney(t.discount, code)}`} muted />}
+          {invoice.taxEnabled && <Row label={`${L.tax} (${invoice.taxRate}%):`} value={fmtMoney(t.tax, code)} muted />}
           <div style={{ height: 3, background: design.accent, margin: "8px 0 14px" }} />
-          <Row label={L.totalMain} value={fmtMoney(t.total, main)} big color="#444" />
+          <Row label={L.totalMain} value={fmtMoney(t.total, code)} big color="#444" />
           {showSec && <Row label={L.totalSecondary} value={fmtMoney(toHtgCents(t.total, rate), sec)} big color={design.accent} />}
-          <Row label={L.paid} value={fmtMoney(t.paid, main)} muted />
+          <Row label={L.paid} value={fmtMoney(t.paid, code)} muted />
           <div style={{ background: design.highlight, borderLeft: "6px solid #c9a227", color: "#fff", padding: "16px 26px", marginTop: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: 700 }}>
-              <span>{L.balance}</span><span style={{ fontSize: fs * 1.5 }}>{fmtMoney(t.balance, main)}</span>
+              <span>{L.balance}</span><span style={{ fontSize: fs * 1.5 }}>{fmtMoney(t.balance, code)}</span>
             </div>
             {showSec && (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: 700, marginTop: 12 }}>
