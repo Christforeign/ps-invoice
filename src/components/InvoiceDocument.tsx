@@ -1,9 +1,9 @@
 import { forwardRef } from "react";
-import { calcLine, calcTotals, fmtMoney, fmtWeight, toHtgCents } from "@/lib/calc";
+import { calcLine, calcTotals, docCode, fmtMoney, fmtWeight, toHtgCents } from "@/lib/calc";
 import type { Business, CurrencySettings, Design, Invoice } from "@/lib/store";
 
 interface Props {
-  invoice: Pick<Invoice, "number" | "date" | "dueDate" | "customer" | "packages" | "payments" | "notes" | "paymentInfo" | "exchangeRate" | "taxEnabled" | "taxRate" | "cancelled">;
+  invoice: Pick<Invoice, "number" | "date" | "dueDate" | "customer" | "packages" | "payments" | "notes" | "paymentInfo" | "exchangeRate" | "taxEnabled" | "taxRate" | "cancelled" | "currencyMode">;
   business: Business;
   currency: CurrencySettings;
   design: Design;
@@ -17,7 +17,8 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
   const t = calcTotals(invoice.packages, invoice.payments, Number(invoice.taxRate) || 0, invoice.taxEnabled, invoice.cancelled);
   const main = currency.main || "USD";
   const sec = currency.secondary || "HTG";
-  const showSec = S.secondaryCurrency && currency.showSecondary;
+  const code = docCode(invoice.currencyMode, main);
+  const showSec = S.secondaryCurrency && currency.showSecondary && (invoice.currencyMode ?? "BOTH") === "BOTH";
   const rate = invoice.exchangeRate || currency.rate;
   const rates = Array.from(new Set(invoice.packages.map((p) => p.rate).filter(Boolean)));
   const border = design.tableBorders ? `1px solid #e5e7eb` : "none";
