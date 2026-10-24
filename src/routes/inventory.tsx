@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { PageTitle } from "@/components/AppShell";
 import { fileToSmallImage } from "@/lib/receipt";
 import { adjustStock, deleteProduct, uid, upsertProduct, useDB, type Product } from "@/lib/store";
+import { convertCents, fmtMoney, toCents } from "@/lib/calc";
 
 export const Route = createFileRoute("/inventory")({
   head: () => ({
@@ -25,7 +26,7 @@ export const Route = createFileRoute("/inventory")({
   component: Inventory,
 });
 
-const money = (v: string) => `$${(Number(v) || 0).toFixed(2)}`;
+const money = (v: string, cur: "USD" | "HTG" = "USD") => fmtMoney(toCents(v), cur);
 
 function emptyProduct(): Product {
   return { id: uid(), name: "", sku: "", price: "", stock: 0, lowStock: 2, notes: "", createdAt: new Date().toISOString() };
@@ -57,7 +58,16 @@ function ProductForm({ initial, onDone }: { initial: Product; onDone: () => void
       <div><Label>Nom du produit *</Label><Input value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} /></div>
       <div className="grid grid-cols-2 gap-3">
         <div><Label>Référence</Label><Input value={p.sku} onChange={(e) => setP({ ...p, sku: e.target.value })} /></div>
-        <div><Label>Prix (USD) *</Label><Input inputMode="decimal" value={p.price} onChange={(e) => setP({ ...p, price: e.target.value })} /></div>
+        <div>
+          <Label>Prix *</Label>
+          <div className="flex gap-1">
+            <Input inputMode="decimal" value={p.price} onChange={(e) => setP({ ...p, price: e.target.value })} />
+            <select aria-label="Devise du prix" value={p.currency ?? "USD"} onChange={(e) => setP({ ...p, currency: e.target.value as "USD" | "HTG" })} className="h-9 rounded-md border border-input bg-transparent px-1 text-sm">
+              <option value="USD">USD</option>
+              <option value="HTG">HTG</option>
+            </select>
+          </div>
+        </div>
         <div><Label>Quantité en stock</Label><Input inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} /></div>
         <div><Label>Alerte stock faible</Label><Input inputMode="numeric" value={String(p.lowStock)} onChange={(e) => setP({ ...p, lowStock: Math.max(0, parseInt(e.target.value) || 0) })} /></div>
       </div>
@@ -76,7 +86,8 @@ function Inventory() {
     return db.products.filter((p) => !s || [p.name, p.sku, p.notes].join(" ").toLowerCase().includes(s));
   }, [db.products, q]);
   const totalUnits = db.products.reduce((a, p) => a + p.stock, 0);
-  const totalValue = db.products.reduce((a, p) => a + Math.round((Number(p.price) || 0) * 100) * p.stock, 0) / 100;
+  const rate = db.settings.currency.rate;
+  const totalValueCents = db.products.reduce((a, p) => a + convertCents((toCents(p.price) || 0) * p.stock, p.currency ?? "USD", "USD", rate), 0);
 
   return (
     <div>
@@ -86,7 +97,7 @@ function Inventory() {
       <div className="mb-4 grid grid-cols-3 gap-3">
         <div className="rounded-lg border bg-card p-3"><div className="text-xs text-muted-foreground">Produits</div><div className="text-xl font-bold">{db.products.length}</div></div>
         <div className="rounded-lg border bg-card p-3"><div className="text-xs text-muted-foreground">Unités en stock</div><div className="text-xl font-bold">{totalUnits}</div></div>
-        <div className="rounded-lg border bg-card p-3"><div className="text-xs text-muted-foreground">Valeur du stock</div><div className="text-xl font-bold">${totalValue.toFixed(2)}</div></div>
+        <div className="rounded-lg border bg-card p-3"><div className="text-xs text-muted-foreground">Valeur du stock</div><div className="text-xl font-bold">{fmtMoney(totalValueCents, "USD")}</div></div>
       </div>
       <Input className="mb-4 max-w-sm" placeholder="Rechercher un produit…" value={q} onChange={(e) => setQ(e.target.value)} />
       {rows.length === 0 ? (
@@ -103,7 +114,7 @@ function Inventory() {
                     <div className="truncate font-semibold">{p.name}</div>
                     {p.sku && <div className="text-xs text-muted-foreground">Réf. {p.sku}</div>}
                   </div>
-                  <div className="text-lg font-bold text-primary">{money(p.price)}</div>
+                  <div className="text-lg font-bold text-primary">{money(p.price, p.currency ?? "USD")}</div>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <div className={`flex items-center gap-1 text-sm ${p.stock === 0 ? "text-destructive" : low ? "text-primary" : "text-muted-foreground"}`}>
