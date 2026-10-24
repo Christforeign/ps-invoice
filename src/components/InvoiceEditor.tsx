@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { calcLine, calcTotals, convertWeight, fmtMoney, fmtWeight, isValidNumber, num, toHtgCents, type PackageLine, type Payment, type WeightUnit } from "@/lib/calc";
-import { createInvoice, emptyCustomer, emptyPackage, peekNextNumber, uid, updateInvoice, upsertCustomer, useDB, type Invoice } from "@/lib/store";
+import { calcLine, calcTotals, convertWeight, docCode, fmtMoney, fmtWeight, isValidNumber, num, toHtgCents, type PackageLine, type Payment, type WeightUnit } from "@/lib/calc";
+import { createInvoice, emptyCustomer, emptyPackage, peekNextNumber, uid, updateInvoice, upsertCustomer, useDB, type CurrencyMode, type Invoice } from "@/lib/store";
 import { StatusBadge } from "./StatusBadge";
 
 const MAX = 20;
@@ -31,11 +31,13 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
   const [exchangeRate, setExchangeRate] = useState(existing?.exchangeRate ?? s.currency.rate);
   const [taxEnabled, setTaxEnabled] = useState(existing?.taxEnabled ?? s.currency.taxEnabled);
   const [taxRate, setTaxRate] = useState(existing?.taxRate ?? s.currency.taxRate);
+  const [currencyMode, setCurrencyMode] = useState<CurrencyMode>(existing?.currencyMode ?? s.currency.mode ?? "BOTH");
   const [custSearch, setCustSearch] = useState("");
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
 
   const totals = useMemo(() => calcTotals(packages, payments, num(taxRate), taxEnabled), [packages, payments, taxRate, taxEnabled]);
   const number = existing?.number ?? peekNextNumber();
+  const code = docCode(currencyMode, s.currency.main);
 
   const custMatches = useMemo(() => {
     const q = custSearch.trim().toLowerCase();
@@ -67,7 +69,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
       if (c.total < 0) e[`d${p.id}`] = `Package ${i + 1}: discount larger than line amount`;
     });
     payments.forEach((p, i) => { if (!isValidNumber(p.amount)) e[`p${p.id}`] = `Payment ${i + 1}: invalid amount`; });
-    if (totals.paid > totals.total) e.overpaid = `Amount paid (${fmtMoney(totals.paid)}) is more than the invoice total (${fmtMoney(totals.total)})`;
+    if (totals.paid > totals.total) e.overpaid = `Amount paid (${fmtMoney(totals.paid, code)}) is more than the invoice total (${fmtMoney(totals.total, code)})`;
     if (!isValidNumber(exchangeRate, false)) e["rate"] = "Invalid exchange rate";
     setErrors(e);
     return Object.values(e) as string[];
@@ -83,7 +85,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
       cid = c.id;
     }
     const cleanPayments = payments.filter((p) => num(p.amount) > 0);
-    const draft = { date, dueDate, customerId: cid, customer, packages, payments: cleanPayments, notes, paymentInfo, designId, exchangeRate, taxEnabled, taxRate };
+    const draft = { date, dueDate, customerId: cid, customer, packages, payments: cleanPayments, notes, paymentInfo, designId, exchangeRate, taxEnabled, taxRate, currencyMode };
     if (existing) {
       updateInvoice(existing.id, draft);
       toast.success(`Invoice ${existing.number} updated`);
