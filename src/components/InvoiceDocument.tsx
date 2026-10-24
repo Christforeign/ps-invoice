@@ -1,9 +1,9 @@
 import { forwardRef } from "react";
-import { calcLine, calcTotals, fmtMoney, fmtWeight, toHtgCents } from "@/lib/calc";
+import { calcLine, calcTotals, docCode, fmtMoney, fmtWeight, toHtgCents } from "@/lib/calc";
 import type { Business, CurrencySettings, Design, Invoice } from "@/lib/store";
 
 interface Props {
-  invoice: Pick<Invoice, "number" | "date" | "dueDate" | "customer" | "packages" | "payments" | "notes" | "paymentInfo" | "exchangeRate" | "taxEnabled" | "taxRate" | "cancelled">;
+  invoice: Pick<Invoice, "number" | "date" | "dueDate" | "customer" | "packages" | "payments" | "notes" | "paymentInfo" | "exchangeRate" | "taxEnabled" | "taxRate" | "cancelled" | "currencyMode">;
   business: Business;
   currency: CurrencySettings;
   design: Design;
@@ -17,7 +17,8 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
   const t = calcTotals(invoice.packages, invoice.payments, Number(invoice.taxRate) || 0, invoice.taxEnabled, invoice.cancelled);
   const main = currency.main || "USD";
   const sec = currency.secondary || "HTG";
-  const showSec = S.secondaryCurrency && currency.showSecondary;
+  const code = docCode(invoice.currencyMode, main);
+  const showSec = S.secondaryCurrency && currency.showSecondary && (invoice.currencyMode ?? "BOTH") === "BOTH";
   const rate = invoice.exchangeRate || currency.rate;
   const rates = Array.from(new Set(invoice.packages.map((p) => p.rate).filter(Boolean)));
   const border = design.tableBorders ? `1px solid #e5e7eb` : "none";
@@ -34,16 +35,16 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
   if (S.colCustoms) cols.push({ key: "customs", label: L.colCustoms, align: "right", render: (i) => { const c = calcLine(invoice.packages[i]!).customs; return c ? fmtMoney(c, "") : "—"; } });
   if (S.colService) cols.push({ key: "service", label: L.colService, align: "right", render: (i) => { const c = calcLine(invoice.packages[i]!).service; return c ? fmtMoney(c, "") : "—"; } });
   cols.push({ key: "weight", label: L.colWeight, align: "right", render: (i) => invoice.packages[i]!.kind === "item" ? "—" : fmtWeight(calcLine(invoice.packages[i]!).milliLb) });
-  cols.push({ key: "ship", label: `${L.colShipping}${rates.length === 1 ? ` · ${rates[0]} ${main}/LB` : ""}`, align: "right", render: (i) => fmtMoney(calcLine(invoice.packages[i]!).shipping, main) });
-  if (S.colTotal) cols.push({ key: "total", label: L.colTotal, align: "right", render: (i) => fmtMoney(calcLine(invoice.packages[i]!).total, main) });
+  cols.push({ key: "ship", label: `${L.colShipping}${rates.length === 1 ? ` · ${rates[0]} ${code}/LB` : ""}`, align: "right", render: (i) => fmtMoney(calcLine(invoice.packages[i]!).shipping, code) });
+  if (S.colTotal) cols.push({ key: "total", label: L.colTotal, align: "right", render: (i) => fmtMoney(calcLine(invoice.packages[i]!).total, code) });
 
   const totalsRow: Record<string, string> = {
     pkg: L.totals,
     customs: t.customs ? fmtMoney(t.customs, "") : "—",
     service: t.service ? fmtMoney(t.service, "") : "—",
     weight: fmtWeight(t.milliLb),
-    ship: fmtMoney(t.shipping, main),
-    total: fmtMoney(t.subtotal, main),
+    ship: fmtMoney(t.shipping, code),
+    total: fmtMoney(t.subtotal, code),
   };
 
   const logo = S.logo && business.logo ? <img src={business.logo} alt="logo" crossOrigin="anonymous" style={{ width: design.logoSize, maxHeight: design.logoSize, objectFit: "contain" }} /> : null;
@@ -88,7 +89,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
         <div style={{ textAlign: "right", lineHeight: 1.7 }}>
           <div style={{ color: "#888", fontWeight: 600 }}>{L.shipDetails}</div>
           <div style={{ fontWeight: 700, fontSize: fs * 1.2, color: "#444" }}>{invoice.packages.length} colis • {fmtWeight(t.milliLb)}</div>
-          <div style={{ color: "#888" }}>{rates.length ? `${rates.join(" / ")} ${main}/lb` : ""} · Facturation {main}</div>
+          <div style={{ color: "#888" }}>{rates.length ? `${rates.join(" / ")} ${code}/lb` : ""} · Facturation {code}</div>
         </div>
       </div>
 
@@ -136,7 +137,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
                 invoice.payments.map((p) => (
                   <div key={p.id} style={{ display: "flex", justifyContent: "space-between", fontSize: fs * 0.92, padding: "3px 0" }}>
                     <span>{p.date} · {p.method}</span>
-                    <b>{fmtMoney(Math.round(Number(p.amount) * 100), main)}</b>
+                    <b>{fmtMoney(Math.round(Number(p.amount) * 100), code)}</b>
                   </div>
                 ))
               )}
@@ -144,17 +145,17 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, Props>(function Invoic
           )}
         </div>
         <div style={{ width: 340, lineHeight: 1.6 }}>
-          <Row label={`${L.subtotal}:`} value={fmtMoney(t.shipping + t.customs, main)} muted />
-          <Row label={`${L.serviceFees}:`} value={fmtMoney(t.service, main)} muted />
-          {t.discount > 0 && <Row label={`${L.discount}:`} value={`-${fmtMoney(t.discount, main)}`} muted />}
-          {invoice.taxEnabled && <Row label={`${L.tax} (${invoice.taxRate}%):`} value={fmtMoney(t.tax, main)} muted />}
+          <Row label={`${L.subtotal}:`} value={fmtMoney(t.shipping + t.customs, code)} muted />
+          <Row label={`${L.serviceFees}:`} value={fmtMoney(t.service, code)} muted />
+          {t.discount > 0 && <Row label={`${L.discount}:`} value={`-${fmtMoney(t.discount, code)}`} muted />}
+          {invoice.taxEnabled && <Row label={`${L.tax} (${invoice.taxRate}%):`} value={fmtMoney(t.tax, code)} muted />}
           <div style={{ height: 3, background: design.accent, margin: "8px 0 14px" }} />
-          <Row label={L.totalMain} value={fmtMoney(t.total, main)} big color="#444" />
+          <Row label={L.totalMain} value={fmtMoney(t.total, code)} big color="#444" />
           {showSec && <Row label={L.totalSecondary} value={fmtMoney(toHtgCents(t.total, rate), sec)} big color={design.accent} />}
-          <Row label={L.paid} value={fmtMoney(t.paid, main)} muted />
+          <Row label={L.paid} value={fmtMoney(t.paid, code)} muted />
           <div style={{ background: design.highlight, borderLeft: "6px solid #c9a227", color: "#fff", padding: "16px 26px", marginTop: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: 700 }}>
-              <span>{L.balance}</span><span style={{ fontSize: fs * 1.5 }}>{fmtMoney(t.balance, main)}</span>
+              <span>{L.balance}</span><span style={{ fontSize: fs * 1.5 }}>{fmtMoney(t.balance, code)}</span>
             </div>
             {showSec && (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: 700, marginTop: 12 }}>

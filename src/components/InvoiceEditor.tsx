@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { calcLine, calcTotals, convertWeight, fmtMoney, fmtWeight, isValidNumber, num, toHtgCents, type PackageLine, type Payment, type WeightUnit } from "@/lib/calc";
-import { createInvoice, emptyCustomer, emptyPackage, peekNextNumber, uid, updateInvoice, upsertCustomer, useDB, type Invoice } from "@/lib/store";
+import { calcLine, calcTotals, convertWeight, docCode, fmtMoney, fmtWeight, isValidNumber, num, toHtgCents, type PackageLine, type Payment, type WeightUnit } from "@/lib/calc";
+import { createInvoice, emptyCustomer, emptyPackage, peekNextNumber, uid, updateInvoice, upsertCustomer, useDB, type CurrencyMode, type Invoice } from "@/lib/store";
 import { StatusBadge } from "./StatusBadge";
 
 const MAX = 20;
@@ -31,11 +31,13 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
   const [exchangeRate, setExchangeRate] = useState(existing?.exchangeRate ?? s.currency.rate);
   const [taxEnabled, setTaxEnabled] = useState(existing?.taxEnabled ?? s.currency.taxEnabled);
   const [taxRate, setTaxRate] = useState(existing?.taxRate ?? s.currency.taxRate);
+  const [currencyMode, setCurrencyMode] = useState<CurrencyMode>(existing?.currencyMode ?? s.currency.mode ?? "BOTH");
   const [custSearch, setCustSearch] = useState("");
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
 
   const totals = useMemo(() => calcTotals(packages, payments, num(taxRate), taxEnabled), [packages, payments, taxRate, taxEnabled]);
   const number = existing?.number ?? peekNextNumber();
+  const code = docCode(currencyMode, s.currency.main);
 
   const custMatches = useMemo(() => {
     const q = custSearch.trim().toLowerCase();
@@ -67,7 +69,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
       if (c.total < 0) e[`d${p.id}`] = `Package ${i + 1}: discount larger than line amount`;
     });
     payments.forEach((p, i) => { if (!isValidNumber(p.amount)) e[`p${p.id}`] = `Payment ${i + 1}: invalid amount`; });
-    if (totals.paid > totals.total) e.overpaid = `Amount paid (${fmtMoney(totals.paid)}) is more than the invoice total (${fmtMoney(totals.total)})`;
+    if (totals.paid > totals.total) e.overpaid = `Amount paid (${fmtMoney(totals.paid, code)}) is more than the invoice total (${fmtMoney(totals.total, code)})`;
     if (!isValidNumber(exchangeRate, false)) e["rate"] = "Invalid exchange rate";
     setErrors(e);
     return Object.values(e) as string[];
@@ -83,7 +85,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
       cid = c.id;
     }
     const cleanPayments = payments.filter((p) => num(p.amount) > 0);
-    const draft = { date, dueDate, customerId: cid, customer, packages, payments: cleanPayments, notes, paymentInfo, designId, exchangeRate, taxEnabled, taxRate };
+    const draft = { date, dueDate, customerId: cid, customer, packages, payments: cleanPayments, notes, paymentInfo, designId, exchangeRate, taxEnabled, taxRate, currencyMode };
     if (existing) {
       updateInvoice(existing.id, draft);
       toast.success(`Invoice ${existing.number} updated`);
@@ -113,6 +115,14 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
               <Label>Template</Label>
               <select value={designId} onChange={(e) => setDesignId(e.target.value)} className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm">
                 {db.designs.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Devise</Label>
+              <select value={currencyMode} onChange={(e) => setCurrencyMode(e.target.value as CurrencyMode)} className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm">
+                <option value="BOTH">USD + HTG (les deux)</option>
+                <option value="USD">USD seulement</option>
+                <option value="HTG">HTG (gourdes) seulement</option>
               </select>
             </div>
           </div>
@@ -177,7 +187,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
                     <div className="col-span-2"><Label className="text-xs">Description</Label><Input value={p.description} onChange={(e) => setPkg(p.id, { description: e.target.value })} maxLength={200} /></div>
                     <div><Label className="text-xs">Qty</Label><Input inputMode="numeric" value={p.quantity} onChange={(e) => setPkg(p.id, { quantity: e.target.value.replace(/\D/g, "") })} className={errors[`q${p.id}`] ? "border-destructive" : ""} /></div>
 {p.kind === "item" ? (
-                      <div className="col-span-2"><Label className="text-xs">Prix unitaire ({s.currency.main}) *</Label>{numInput(p.unitPrice ?? "", (v) => setPkg(p.id, { unitPrice: v }), `u${p.id}`, "0.00")}</div>
+                      <div className="col-span-2"><Label className="text-xs">Prix unitaire ({code}) *</Label>{numInput(p.unitPrice ?? "", (v) => setPkg(p.id, { unitPrice: v }), `u${p.id}`, "0.00")}</div>
                     ) : (<>
                     <div><Label className="text-xs">Weight *</Label>{numInput(p.weight, (v) => setPkg(p.id, { weight: v }), `w${p.id}`, "0.00")}</div>
                     <div>
@@ -186,7 +196,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
                         {(["lb", "oz", "kg", "g"] as const).map((u) => <option key={u}>{u}</option>)}
                       </select>
                     </div>
-                    <div><Label className="text-xs">Rate ({s.currency.main}/lb)</Label>{numInput(p.rate, (v) => setPkg(p.id, { rate: v }), `r${p.id}`)}</div>
+                    <div><Label className="text-xs">Rate ({code}/lb)</Label>{numInput(p.rate, (v) => setPkg(p.id, { rate: v }), `r${p.id}`)}</div>
                     </>)}
                     <div><Label className="text-xs">Customs / duty</Label>{numInput(p.customs, (v) => setPkg(p.id, { customs: v }), `customs${p.id}`)}</div>
                     <div><Label className="text-xs">Service fee</Label>{numInput(p.serviceFee, (v) => setPkg(p.id, { serviceFee: v }), `serviceFee${p.id}`)}</div>
@@ -195,8 +205,8 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
                   </div>
                   {Object.entries(errors).filter(([k]) => k.endsWith(p.id)).map(([k, v]) => <p key={k} className="mt-1 text-xs text-destructive">{v}</p>)}
                   <div className="mt-2 flex flex-wrap justify-between gap-x-4 gap-y-1 rounded bg-muted px-3 py-2 text-sm">
-                    <span>{p.kind === "item" ? <>Montant <b>{fmtMoney(c.shipping)}</b></> : <>{p.weightUnit !== "lb" && `${fmtWeight(c.milliLb)} · `}Shipping <b>{fmtMoney(c.shipping)}</b></>}</span>
-                    <span>Line total <b className="text-primary">{fmtMoney(c.total)}</b></span>
+                    <span>{p.kind === "item" ? <>Montant <b>{fmtMoney(c.shipping, code)}</b></> : <>{p.weightUnit !== "lb" && `${fmtWeight(c.milliLb)} · `}Shipping <b>{fmtMoney(c.shipping, code)}</b></>}</span>
+                    <span>Line total <b className="text-primary">{fmtMoney(c.total, code)}</b></span>
                   </div>
                 </div>
               );
@@ -247,27 +257,27 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
           <dl className="space-y-1.5 text-sm">
             <TRow k="Packages" v={String(packages.length)} />
             <TRow k="Total weight" v={fmtWeight(totals.milliLb)} />
-            <TRow k="Shipping" v={fmtMoney(totals.shipping)} />
-            <TRow k="Customs / duty" v={fmtMoney(totals.customs)} />
-            <TRow k="Service fees" v={fmtMoney(totals.service)} />
-            <TRow k="Discounts" v={totals.discount ? `-${fmtMoney(totals.discount)}` : fmtMoney(0)} />
-            <TRow k="Subtotal" v={fmtMoney(totals.subtotal)} />
+            <TRow k="Shipping" v={fmtMoney(totals.shipping, code)} />
+            <TRow k="Customs / duty" v={fmtMoney(totals.customs, code)} />
+            <TRow k="Service fees" v={fmtMoney(totals.service, code)} />
+            <TRow k="Discounts" v={totals.discount ? `-${fmtMoney(totals.discount, code)}` : fmtMoney(0, code)} />
+            <TRow k="Subtotal" v={fmtMoney(totals.subtotal, code)} />
             <div className="flex items-center justify-between gap-2 py-1">
               <label className="flex items-center gap-2"><Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} /> Tax</label>
               {taxEnabled && <Input value={taxRate} onChange={(e) => setTaxRate(e.target.value)} className="h-8 w-20 text-right" inputMode="decimal" />}
               {taxEnabled && <span>%</span>}
             </div>
-            {taxEnabled && <TRow k="Tax" v={fmtMoney(totals.tax)} />}
+            {taxEnabled && <TRow k="Tax" v={fmtMoney(totals.tax, code)} />}
             <div className="my-2 border-t" />
-            <div className="flex justify-between font-display text-2xl font-bold"><span>Total</span><span>{fmtMoney(totals.total, s.currency.main)}</span></div>
-            {s.currency.showSecondary && (
+            <div className="flex justify-between font-display text-2xl font-bold"><span>Total</span><span>{fmtMoney(totals.total, code)}</span></div>
+            {currencyMode === "BOTH" && s.currency.showSecondary && (
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="flex items-center gap-1">@ <Input value={exchangeRate} onChange={(e) => setExchangeRate(e.target.value)} className="h-7 w-20 text-right" inputMode="decimal" /></span>
                 <span>{fmtMoney(toHtgCents(totals.total, exchangeRate), s.currency.secondary)}</span>
               </div>
             )}
-            <TRow k="Paid" v={fmtMoney(totals.paid)} />
-            <div className="flex justify-between rounded-md bg-primary px-3 py-2 font-bold text-primary-foreground"><span>Balance</span><span>{fmtMoney(totals.balance, s.currency.main)}</span></div>
+            <TRow k="Paid" v={fmtMoney(totals.paid, code)} />
+            <div className="flex justify-between rounded-md bg-primary px-3 py-2 font-bold text-primary-foreground"><span>Balance</span><span>{fmtMoney(totals.balance, code)}</span></div>
           </dl>
           <Button size="lg" className="mt-4 h-12 w-full text-base" onClick={submit}>{existing ? "Save changes" : "Generate Invoice"}</Button>
         </div>
