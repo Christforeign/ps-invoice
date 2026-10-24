@@ -117,6 +117,14 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
                 {db.designs.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
+            <div>
+              <Label>Devise</Label>
+              <select value={currencyMode} onChange={(e) => setCurrencyMode(e.target.value as CurrencyMode)} className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm">
+                <option value="BOTH">USD + HTG (les deux)</option>
+                <option value="USD">USD seulement</option>
+                <option value="HTG">HTG (gourdes) seulement</option>
+              </select>
+            </div>
           </div>
         </section>
 
@@ -179,7 +187,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
                     <div className="col-span-2"><Label className="text-xs">Description</Label><Input value={p.description} onChange={(e) => setPkg(p.id, { description: e.target.value })} maxLength={200} /></div>
                     <div><Label className="text-xs">Qty</Label><Input inputMode="numeric" value={p.quantity} onChange={(e) => setPkg(p.id, { quantity: e.target.value.replace(/\D/g, "") })} className={errors[`q${p.id}`] ? "border-destructive" : ""} /></div>
 {p.kind === "item" ? (
-                      <div className="col-span-2"><Label className="text-xs">Prix unitaire ({s.currency.main}) *</Label>{numInput(p.unitPrice ?? "", (v) => setPkg(p.id, { unitPrice: v }), `u${p.id}`, "0.00")}</div>
+                      <div className="col-span-2"><Label className="text-xs">Prix unitaire ({code}) *</Label>{numInput(p.unitPrice ?? "", (v) => setPkg(p.id, { unitPrice: v }), `u${p.id}`, "0.00")}</div>
                     ) : (<>
                     <div><Label className="text-xs">Weight *</Label>{numInput(p.weight, (v) => setPkg(p.id, { weight: v }), `w${p.id}`, "0.00")}</div>
                     <div>
@@ -188,7 +196,7 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
                         {(["lb", "oz", "kg", "g"] as const).map((u) => <option key={u}>{u}</option>)}
                       </select>
                     </div>
-                    <div><Label className="text-xs">Rate ({s.currency.main}/lb)</Label>{numInput(p.rate, (v) => setPkg(p.id, { rate: v }), `r${p.id}`)}</div>
+                    <div><Label className="text-xs">Rate ({code}/lb)</Label>{numInput(p.rate, (v) => setPkg(p.id, { rate: v }), `r${p.id}`)}</div>
                     </>)}
                     <div><Label className="text-xs">Customs / duty</Label>{numInput(p.customs, (v) => setPkg(p.id, { customs: v }), `customs${p.id}`)}</div>
                     <div><Label className="text-xs">Service fee</Label>{numInput(p.serviceFee, (v) => setPkg(p.id, { serviceFee: v }), `serviceFee${p.id}`)}</div>
@@ -197,8 +205,8 @@ export function InvoiceEditor({ existing }: { existing?: Invoice }) {
                   </div>
                   {Object.entries(errors).filter(([k]) => k.endsWith(p.id)).map(([k, v]) => <p key={k} className="mt-1 text-xs text-destructive">{v}</p>)}
                   <div className="mt-2 flex flex-wrap justify-between gap-x-4 gap-y-1 rounded bg-muted px-3 py-2 text-sm">
-                    <span>{p.kind === "item" ? <>Montant <b>{fmtMoney(c.shipping)}</b></> : <>{p.weightUnit !== "lb" && `${fmtWeight(c.milliLb)} · `}Shipping <b>{fmtMoney(c.shipping)}</b></>}</span>
-                    <span>Line total <b className="text-primary">{fmtMoney(c.total)}</b></span>
+                    <span>{p.kind === "item" ? <>Montant <b>{fmtMoney(c.shipping, code)}</b></> : <>{p.weightUnit !== "lb" && `${fmtWeight(c.milliLb)} · `}Shipping <b>{fmtMoney(c.shipping, code)}</b></>}</span>
+                    <span>Line total <b className="text-primary">{fmtMoney(c.total, code)}</b></span>
                   </div>
                 </div>
               );
